@@ -12,8 +12,8 @@ export default function MapView({ positionsGeoJson, alerts, selectedAlertId, sar
     map.current = new maplibregl.Map({
       container: mapContainer.current,
       style: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
-      center: [-72.5, 40.0],
-      zoom: 6,
+      center: [72.0, 15.0], // Indian Ocean / South Asia
+      zoom: 3,
       interactive: true
     });
     
@@ -123,22 +123,12 @@ export default function MapView({ positionsGeoJson, alerts, selectedAlertId, sar
         }
       });
 
-      // SAR Area Layer
+      // SAR Area Layer — sources kept for updates, but no visible fill (only dashed outline on demand)
       map.current.addSource('sar-area', {
         type: 'geojson',
         data: { type: 'FeatureCollection', features: [] }
       });
 
-      map.current.addLayer({
-        id: 'sar-area-fill',
-        type: 'fill',
-        source: 'sar-area',
-        paint: {
-          'fill-color': '#e74c3c',
-          'fill-opacity': 0.15
-        }
-      });
-      
       map.current.addLayer({
         id: 'sar-area-line',
         type: 'line',
@@ -161,20 +151,19 @@ export default function MapView({ positionsGeoJson, alerts, selectedAlertId, sar
     }
   }, [positionsGeoJson]);
   
-  // Fetch risk heatmap data
+  // Fetch risk heatmap data — only when Go backend is available
   useEffect(() => {
     const fetchRiskMap = async () => {
       try {
         const res = await fetch('http://localhost:8080/api/risk-heatmap');
-        if (res.ok) {
-          const geojson = await res.json();
-          if (map.current && map.current.isStyleLoaded()) {
-            const src = map.current.getSource('risk-heatmap-src');
-            if (src) src.setData(geojson);
-          }
+        if (!res.ok) return; // Go backend not running, skip silently
+        const geojson = await res.json();
+        if (map.current && map.current.isStyleLoaded()) {
+          const src = map.current.getSource('risk-heatmap-src');
+          if (src) src.setData(geojson);
         }
-      } catch (err) {
-        console.error("Failed to fetch risk heatmap", err);
+      } catch (_) {
+        // Go backend not running in dev — silent fail
       }
     };
     fetchRiskMap();

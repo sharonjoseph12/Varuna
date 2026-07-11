@@ -13,8 +13,8 @@ export default function CasePanel({ alerts, selectedAlertId, onSelectAlert, sarM
           const data = await res.json();
           setTrustScores(data || {});
         }
-      } catch (err) {
-        console.error("Failed to fetch trust scores", err);
+      } catch (_) {
+        // Go backend not running — silent fail, UI degrades gracefully
       }
     };
     fetchTrust();
