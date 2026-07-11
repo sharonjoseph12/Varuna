@@ -18,31 +18,6 @@ export default function MapView({ positionsGeoJson, alerts, selectedAlertId }) {
     });
     
     map.current.on('load', () => {
-      // Add Zones
-      map.current.addSource('zones', {
-        type: 'geojson',
-        data: zones
-      });
-      
-      map.current.addLayer({
-        id: 'zones-fill',
-        type: 'fill',
-        source: 'zones',
-        paint: {
-          'fill-color': ['get', 'fill_color'],
-        }
-      });
-      
-      map.current.addLayer({
-        id: 'zones-outline',
-        type: 'line',
-        source: 'zones',
-        paint: {
-          'line-color': ['get', 'stroke_color'],
-          'line-width': 2
-        }
-      });
-      
       // Add Vessels
       map.current.addSource('vessels', {
         type: 'geojson',
@@ -61,9 +36,35 @@ export default function MapView({ positionsGeoJson, alerts, selectedAlertId }) {
           'icon-size': 1.5
         },
         paint: {
-          'icon-color': '#fff'
+          'icon-opacity': [
+            'case',
+            ['==', ['get', 'is_dark'], true], 0.4,
+            1.0
+          ],
+          'icon-color': [
+            'case',
+            ['==', ['get', 'is_dark'], true], '#ffffff',
+            ['==', ['get', 'trust_score'], null], '#fff',
+            ['<', ['get', 'trust_score'], 0.5], '#ef4444',
+            ['<=', ['get', 'trust_score'], 0.8], '#f59e0b',
+            '#10b981'
+          ]
         }
       });
+      
+      // Add pulsing aura for spoofed vessels
+      map.current.addLayer({
+        id: 'vessels-pulse-layer',
+        type: 'circle',
+        source: 'vessels',
+        filter: ['<', ['get', 'trust_score'], 0.5],
+        paint: {
+          'circle-radius': 10,
+          'circle-color': '#ef4444',
+          'circle-opacity': 0.5,
+          'circle-pitch-alignment': 'map'
+        }
+      }, 'vessels-layer'); // insert before vessels-layer
       
       // Add Alert Cones / Dotted Lines
       map.current.addSource('alert-path', {
@@ -110,6 +111,23 @@ export default function MapView({ positionsGeoJson, alerts, selectedAlertId }) {
       source.setData(positionsGeoJson);
     }
   }, [positionsGeoJson]);
+
+  // Animate pulse
+  useEffect(() => {
+    if (!map.current) return;
+    let animationId;
+    const animateMarker = (timestamp) => {
+      if (map.current.getLayer('vessels-pulse-layer')) {
+        const radius = (Math.sin(timestamp / 200) + 1) * 10 + 10;
+        const opacity = (Math.sin(timestamp / 200) + 1) * 0.25 + 0.1;
+        map.current.setPaintProperty('vessels-pulse-layer', 'circle-radius', radius);
+        map.current.setPaintProperty('vessels-pulse-layer', 'circle-opacity', opacity);
+      }
+      animationId = requestAnimationFrame(animateMarker);
+    };
+    animationId = requestAnimationFrame(animateMarker);
+    return () => cancelAnimationFrame(animationId);
+  }, []);
   
   // Update selected alert visualizations
   useEffect(() => {

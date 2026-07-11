@@ -1,9 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import { useWebSocket } from './useWebSocket';
+import { useSSE } from './useSSE';
 
 export function usePositions(url) {
-  const { status, messageHandlerRef } = useWebSocket(url);
-  // We use a ref for the Map to avoid React re-renders on every message
+  const { status, messageHandlerRef } = useSSE(url);
   const positionsMap = useRef(new Map());
   const [geoJson, setGeoJson] = useState({
     type: 'FeatureCollection',
@@ -13,12 +12,10 @@ export function usePositions(url) {
   useEffect(() => {
     messageHandlerRef.current = (event) => {
       const data = JSON.parse(event.data);
-      // Batch incoming positions into the map
       positionsMap.current.set(data.vessel_id, data);
     };
   }, [messageHandlerRef]);
 
-  // Flush Map to GeoJSON once per rAF
   useEffect(() => {
     let animationFrameId;
     

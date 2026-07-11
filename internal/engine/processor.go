@@ -8,6 +8,8 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/sharonjoseph12/Varuna/internal/ml"
 )
 
 // Engine is the core processing engine.
@@ -16,6 +18,9 @@ type Engine struct {
 	zones  []Zone
 	grid   *Grid
 	store  *Store
+
+	TrustModel  *ml.ONNXModel
+	IntentModel *ml.ONNXModel
 
 	vessels   map[string]*VesselState // vesselID → state
 	vesselsMu sync.RWMutex
@@ -58,6 +63,19 @@ func NewEngine(cfg Config, zones []Zone) *Engine {
 		positionCh: make(chan PositionUpdate, cfg.PositionChannelSize),
 		latencies:  make([]float64, latencyBufSize),
 		startTime:  time.Now(),
+	}
+
+	// Initialize Models via ML Wrapper
+	var err error
+	e.TrustModel, err = ml.LoadModel("models/trajectory_ae.onnx", []string{"input"}, []string{"output"})
+	if err != nil {
+		log.Printf("warning: TrustModel init failed: %v", err)
+	}
+
+	// Wait for user to provide intent_model.onnx, for now mock it if it fails
+	e.IntentModel, err = ml.LoadModel("models/intent_model.onnx", []string{"input"}, []string{"output"})
+	if err != nil {
+		log.Printf("warning: IntentModel init failed (mock mode active): %v", err)
 	}
 
 	// Initialize store (async, non-blocking)
@@ -131,6 +149,30 @@ func (e *Engine) processMessage(msg AISMessage, ingestTime time.Time) {
 	}
 
 	// Update vessel state
+	
+	// --- Intelligence Fusion ---
+	acceleration := float32(0.0)
+	if vs.LastSeen > 0 && msg.TimestampMs > vs.LastSeen {
+		dt := float32(msg.TimestampMs-vs.LastSeen) / 1000.0
+		if dt > 0 {
+			if lastPos, ok := vs.LastPosition(); ok {
+				dv := float32(msg.SpeedKnots) - float32(lastPos.SpeedKnots)
+				acceleration = dv / dt
+			}
+		}
+	}
+
+	vs.TrustBuffer[vs.TrustBufferIdx] = [3]float32{
+		float32(msg.SpeedKnots) / 30.0,
+		float32(msg.HeadingDeg) / 360.0,
+		acceleration,
+	}
+	vs.TrustBufferIdx++
+
+	// Run intelligence fusion
+	e.EvaluateVessel(vs, ingestTime)
+	// --- End Intelligence Fusion ---
+
 	vs.AddPosition(msg)
 	vs.LastSeen = msg.TimestampMs
 	vs.LastLat = msg.Lat
@@ -138,7 +180,7 @@ func (e *Engine) processMessage(msg AISMessage, ingestTime time.Time) {
 	vs.MMSI = msg.MMSI
 
 	// Emit position update
-	e.emitPosition(msg, ingestTime)
+	e.emitPosition(vs, msg, ingestTime)
 
 	// Identity conflict check (runs before geofence, uses MMSI state)
 	e.checkIdentityConflict(msg, ingestTime)
@@ -182,14 +224,21 @@ func (e *Engine) getOrCreateVessel(vesselID, mmsi string) *VesselState {
 	return vs
 }
 
-func (e *Engine) emitPosition(msg AISMessage, ingestTime time.Time) {
+func (e *Engine) emitPosition(vs *VesselState, msg AISMessage, ingestTime time.Time) {
 	pu := PositionUpdate{
-		VesselID:    msg.VesselID,
-		Lat:         msg.Lat,
-		Lon:         msg.Lon,
-		HeadingDeg:  msg.HeadingDeg,
-		SpeedKnots:  msg.SpeedKnots,
-		TimestampMs: msg.TimestampMs,
+		VesselID:       msg.VesselID,
+		Lat:            msg.Lat,
+		Lon:            msg.Lon,
+		HeadingDeg:     msg.HeadingDeg,
+		SpeedKnots:     msg.SpeedKnots,
+		TimestampMs:    msg.TimestampMs,
+		TrustScore:     vs.TrustScore,
+		BehaviorStatus: vs.BehaviorStatus,
+		IsDark:         vs.IsDark,
+		IntentScore:    vs.IntentScore,
+		Priority:       vs.Priority,
+		CaseLabel:      vs.CaseLabel,
+		Action:         vs.Action,
 	}
 	select {
 	case e.positionCh <- pu:

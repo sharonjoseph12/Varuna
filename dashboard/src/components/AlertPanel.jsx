@@ -20,7 +20,7 @@ export default function AlertPanel({ alerts, selectedAlertId, onSelectAlert }) {
   return (
     <div className="glass-panel alerts-container">
       <div style={{ padding: '16px', borderBottom: 'var(--glass-border)' }}>
-        <h2 style={{ fontSize: '16px', fontWeight: '600' }}>Live Alerts</h2>
+        <h2 style={{ fontSize: '16px', fontWeight: '600' }}>Active Cases</h2>
       </div>
       
       <div style={{ flexGrow: 1, overflowY: 'auto', padding: '8px' }}>
@@ -29,8 +29,8 @@ export default function AlertPanel({ alerts, selectedAlertId, onSelectAlert }) {
             No alerts yet. Waiting for events...
           </div>
         ) : (
-          alerts.map(alert => (
-            <div key={alert.alert_id}>
+          alerts.map((alert, index) => (
+            <div key={alert.alert_id + '-' + index}>
               <div 
                 onClick={() => onSelectAlert(selectedAlertId === alert.alert_id ? null : alert.alert_id)}
                 style={{ 
