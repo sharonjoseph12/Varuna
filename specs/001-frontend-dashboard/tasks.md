@@ -20,12 +20,12 @@
 
 **Purpose**: React + Vite project initialization, mock server, design system
 
-- [ ] T001 Initialize React + Vite project in `dashboard/` with `npx -y create-vite@latest ./ -- --template react`
-- [ ] T002 Install dependencies: `maplibre-gl`, `chart.js`, `react-chartjs-2`, `ws` (dev dep for mock server)
-- [ ] T003 [P] Create design system tokens and global styles in `dashboard/src/styles/index.css`
-- [ ] T004 [P] Create hardcoded GeoJSON zone data in `dashboard/src/utils/zones.js`
-- [ ] T005 [P] Create reasoning trace translator in `dashboard/src/utils/reasoningTrace.js`
-- [ ] T006 [P] Create lead package export utility in `dashboard/src/utils/exportLead.js`
+- [x] T001 Initialize React + Vite project in `dashboard/` with `npx -y create-vite@latest ./ -- --template react`
+- [x] T002 Install dependencies: `maplibre-gl`, `chart.js`, `react-chartjs-2`, `ws` (dev dep for mock server)
+- [x] T003 [P] Create design system tokens and global styles in `dashboard/src/styles/index.css`
+- [x] T004 [P] Create hardcoded GeoJSON zone data in `dashboard/src/utils/zones.js`
+- [x] T005 [P] Create reasoning trace translator in `dashboard/src/utils/reasoningTrace.js`
+- [x] T006 [P] Create lead package export utility in `dashboard/src/utils/exportLead.js`
 
 ---
 
@@ -35,12 +35,12 @@
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T007 Create generic WebSocket hook with reconnect + exponential backoff in `dashboard/src/hooks/useWebSocket.js`
-- [ ] T008 [P] Create batched positions hook using rAF in `dashboard/src/hooks/usePositions.js` (depends on T007)
-- [ ] T009 [P] Create alerts hook with dropped-alert handling in `dashboard/src/hooks/useAlerts.js` (depends on T007)
-- [ ] T010 [P] Create metrics polling hook in `dashboard/src/hooks/useMetrics.js`
-- [ ] T011 Create standalone mock server serving both WebSockets and `/metrics` in `dashboard/mock-server.js`
-- [ ] T012 Create root App layout (map + side panels) in `dashboard/src/App.jsx` and `dashboard/src/App.css`
+- [x] T007 Create generic WebSocket hook with reconnect + exponential backoff in `dashboard/src/hooks/useWebSocket.js`
+- [x] T008 [P] Create batched positions hook using rAF in `dashboard/src/hooks/usePositions.js` (depends on T007)
+- [x] T009 [P] Create alerts hook with dropped-alert handling in `dashboard/src/hooks/useAlerts.js` (depends on T007)
+- [x] T010 [P] Create metrics polling hook in `dashboard/src/hooks/useMetrics.js`
+- [x] T011 Create standalone mock server serving both WebSockets and `/metrics` in `dashboard/mock-server.js`
+- [x] T012 Create root App layout (map + side panels) in `dashboard/src/App.jsx` and `dashboard/src/App.css`
 
 **Checkpoint**: Mock server running, hooks connecting, empty layout renders
 
@@ -54,10 +54,10 @@
 
 ### Implementation for User Story 1
 
-- [ ] T013 [US1] Create MapView component with MapLibre GL JS initialization in `dashboard/src/components/MapView.jsx`
-- [ ] T014 [US1] Add zone polygon rendering layer to MapView from zones.js GeoJSON data
-- [ ] T015 [US1] Add vessel marker layer to MapView — circle/triangle markers oriented by heading, updated via GeoJSON source setData() per rAF tick
-- [ ] T016 [US1] Integrate MapView into App.jsx layout with usePositions hook
+- [x] T013 [US1] Create MapView component with MapLibre GL JS initialization in `dashboard/src/components/MapView.jsx`
+- [x] T014 [US1] Add zone polygon rendering layer to MapView from zones.js GeoJSON data
+- [x] T015 [US1] Add vessel marker layer to MapView — circle/triangle markers oriented by heading, updated via GeoJSON source setData() per rAF tick
+- [x] T016 [US1] Integrate MapView into App.jsx layout with usePositions hook
 
 **Checkpoint**: Map shows zones and moving vessels from mock data. No alert panel or metrics yet, but the core visual is live.
 
@@ -71,8 +71,8 @@
 
 ### Implementation for User Story 3
 
-- [ ] T017 [US3] Create MetricsPanel component with throughput counter and Chart.js latency chart in `dashboard/src/components/MetricsPanel.jsx`
-- [ ] T018 [US3] Integrate MetricsPanel into App.jsx layout with useMetrics hook — always visible on screen
+- [x] T017 [US3] Create MetricsPanel component with throughput counter and Chart.js latency chart in `dashboard/src/components/MetricsPanel.jsx`
+- [x] T018 [US3] Integrate MetricsPanel into App.jsx layout with useMetrics hook — always visible on screen
 
 **Checkpoint**: Performance metrics visible from first load. Throughput climbs past 50k.
 
@@ -86,13 +86,13 @@
 
 ### Implementation for User Story 2
 
-- [ ] T019 [US2] Create AlertPanel component — scrollable list, newest first, color-coded by type in `dashboard/src/components/AlertPanel.jsx`
-- [ ] T020 [US2] Create AlertDetail component — expanded view with reasoning trace, track history, dotted path, corroboration status in `dashboard/src/components/AlertDetail.jsx`
-- [ ] T021 [US2] Integrate human-readable reasoning trace translation (from reasoningTrace.js) into AlertDetail
-- [ ] T022 [US2] Add dotted projected path rendering to MapView when an alert is expanded (silent period = dotted line, never solid)
-- [ ] T023 [US2] Show both conflicting positions on map for identity_conflict alerts
-- [ ] T024 [US2] Create Toast component for alerts_dropped notifications in `dashboard/src/components/Toast.jsx`
-- [ ] T025 [US2] Integrate AlertPanel + AlertDetail + Toast into App.jsx with useAlerts hook
+- [x] T019 [US2] Create AlertPanel component — scrollable list, newest first, color-coded by type in `dashboard/src/components/AlertPanel.jsx`
+- [x] T020 [US2] Create AlertDetail component — expanded view with reasoning trace, track history, dotted path, corroboration status in `dashboard/src/components/AlertDetail.jsx`
+- [x] T021 [US2] Integrate human-readable reasoning trace translation (from reasoningTrace.js) into AlertDetail
+- [x] T022 [US2] Add dotted projected path rendering to MapView when an alert is expanded (silent period = dotted line, never solid)
+- [x] T023 [US2] Show both conflicting positions on map for identity_conflict alerts
+- [x] T024 [US2] Create Toast component for alerts_dropped notifications in `dashboard/src/components/Toast.jsx`
+- [x] T025 [US2] Integrate AlertPanel + AlertDetail + Toast into App.jsx with useAlerts hook
 
 **Checkpoint**: Full alert workflow — streaming, color-coded, expandable with reasoning trace, dotted paths on map.
 
@@ -106,8 +106,8 @@
 
 ### Implementation for User Story 6
 
-- [ ] T026 [US6] Create JitterControl component — slider or draggable marker that sends synthetic position updates in `dashboard/src/components/JitterControl.jsx`
-- [ ] T027 [US6] Integrate JitterControl into App.jsx — small debug control in bottom-right corner
+- [x] T026 [US6] Create JitterControl component — slider or draggable marker that sends synthetic position updates in `dashboard/src/components/JitterControl.jsx`
+- [x] T027 [US6] Integrate JitterControl into App.jsx — small debug control in bottom-right corner
 
 **Checkpoint**: Boundary jitter demo works live — judges can drag a vessel across a zone edge.
 
@@ -121,8 +121,8 @@
 
 ### Implementation for User Story 4
 
-- [ ] T028 [US4] Add export button to AlertDetail component, wired to exportLead.js utility
-- [ ] T029 [US4] Verify exported JSON includes full alert object + `"disclaimer": "investigative lead — not legal evidence"` header
+- [x] T028 [US4] Add export button to AlertDetail component, wired to exportLead.js utility
+- [x] T029 [US4] Verify exported JSON includes full alert object + `"disclaimer": "investigative lead — not legal evidence"` header
 
 **Checkpoint**: Export works from any expanded alert.
 
@@ -136,7 +136,7 @@
 
 ### Implementation for User Story 5
 
-- [ ] T030 [US5] Add re-entry cone rendering to MapView for selected suspected_dark_transit alerts — translucent polygon from last position/heading/speed
+- [x] T030 [US5] Add re-entry cone rendering to MapView for selected suspected_dark_transit alerts — translucent polygon from last position/heading/speed
 
 **Checkpoint**: Cone visible for dark-transit alerts. Nice-to-have complete.
 
@@ -146,10 +146,10 @@
 
 **Purpose**: Visual polish, edge cases, demo readiness
 
-- [ ] T031 [P] Add WebSocket reconnecting indicator to App.jsx
-- [ ] T032 [P] Add "Connecting to server..." loading state before mock server connects
-- [ ] T033 Verify UI stays at ≥30 FPS with 50k msgs/sec (profile and fix if needed)
-- [ ] T034 Run full quickstart.md validation — standalone demo against mock data
+- [x] T031 [P] Add WebSocket reconnecting indicator to App.jsx
+- [x] T032 [P] Add "Connecting to server..." loading state before mock server connects
+- [x] T033 Verify UI stays at ≥30 FPS with 50k msgs/sec (profile and fix if needed)
+- [x] T034 Run full quickstart.md validation — standalone demo against mock data
 
 ---
 

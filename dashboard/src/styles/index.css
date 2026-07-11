@@ -1,0 +1,74 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+:root {
+  --bg-base: #0f172a;
+  --bg-panel: rgba(30, 41, 59, 0.7);
+  --bg-panel-solid: #1e293b;
+  --border-color: rgba(255, 255, 255, 0.1);
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+  
+  /* Alert Type Colors */
+  --color-geofence: #FF6B6B;
+  --color-dark-transit: #FFB347;
+  --color-fishing: #9B59B6;
+  --color-identity: #E74C3C;
+  --color-unresolved: #95A5A6;
+  
+  --glass-bg: rgba(15, 23, 42, 0.65);
+  --glass-border: 1px solid rgba(255, 255, 255, 0.08);
+  --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  --blur: blur(12px);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  background-color: var(--bg-base);
+  color: var(--text-primary);
+  overflow: hidden;
+  line-height: 1.5;
+}
+
+/* Glassmorphism Utilities */
+.glass-panel {
+  background: var(--glass-bg);
+  backdrop-filter: var(--blur);
+  -webkit-backdrop-filter: var(--blur);
+  border: var(--glass-border);
+  box-shadow: var(--glass-shadow);
+  border-radius: 12px;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* Utility classes */
+.bg-geofence { background-color: var(--color-geofence); }
+.text-geofence { color: var(--color-geofence); }
+.bg-suspected_dark_transit { background-color: var(--color-dark-transit); }
+.text-suspected_dark_transit { color: var(--color-dark-transit); }
+.bg-suspected_illegal_fishing { background-color: var(--color-fishing); }
+.text-suspected_illegal_fishing { color: var(--color-fishing); }
+.bg-identity_conflict { background-color: var(--color-identity); }
+.text-identity_conflict { color: var(--color-identity); }
+.bg-unresolved_dark_vessel { background-color: var(--color-unresolved); }
+.text-unresolved_dark_vessel { color: var(--color-unresolved); }

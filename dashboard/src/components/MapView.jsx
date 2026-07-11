@@ -1,0 +1,175 @@
+import { useEffect, useRef } from 'react';
+import maplibregl from 'maplibre-gl';
+import { zones } from '../utils/zones';
+
+export default function MapView({ positionsGeoJson, alerts, selectedAlertId }) {
+  const mapContainer = useRef(null);
+  const map = useRef(null);
+  
+  useEffect(() => {
+    if (map.current) return; // initialize map only once
+    
+    map.current = new maplibregl.Map({
+      container: mapContainer.current,
+      style: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
+      center: [-72.5, 40.0],
+      zoom: 6,
+      interactive: true
+    });
+    
+    map.current.on('load', () => {
+      // Add Zones
+      map.current.addSource('zones', {
+        type: 'geojson',
+        data: zones
+      });
+      
+      map.current.addLayer({
+        id: 'zones-fill',
+        type: 'fill',
+        source: 'zones',
+        paint: {
+          'fill-color': ['get', 'fill_color'],
+        }
+      });
+      
+      map.current.addLayer({
+        id: 'zones-outline',
+        type: 'line',
+        source: 'zones',
+        paint: {
+          'line-color': ['get', 'stroke_color'],
+          'line-width': 2
+        }
+      });
+      
+      // Add Vessels
+      map.current.addSource('vessels', {
+        type: 'geojson',
+        data: { type: 'FeatureCollection', features: [] }
+      });
+      
+      // Triangle marker pointing up
+      map.current.addLayer({
+        id: 'vessels-layer',
+        type: 'symbol',
+        source: 'vessels',
+        layout: {
+          'icon-image': 'triangle-11', // MapLibre built-in icon or use SDF
+          'icon-rotate': ['get', 'heading'],
+          'icon-allow-overlap': true,
+          'icon-size': 1.5
+        },
+        paint: {
+          'icon-color': '#fff'
+        }
+      });
+      
+      // Add Alert Cones / Dotted Lines
+      map.current.addSource('alert-path', {
+        type: 'geojson',
+        data: { type: 'FeatureCollection', features: [] }
+      });
+      
+      map.current.addLayer({
+        id: 'alert-path-layer',
+        type: 'line',
+        source: 'alert-path',
+        paint: {
+          'line-color': '#FFB347',
+          'line-width': 3,
+          'line-dasharray': [2, 2] // Dotted line per spec
+        }
+      });
+      
+      // For identity conflicts, show two red dots
+      map.current.addSource('identity-conflict', {
+        type: 'geojson',
+        data: { type: 'FeatureCollection', features: [] }
+      });
+      
+      map.current.addLayer({
+        id: 'identity-conflict-layer',
+        type: 'circle',
+        source: 'identity-conflict',
+        paint: {
+          'circle-radius': 8,
+          'circle-color': '#E74C3C',
+          'circle-stroke-width': 2,
+          'circle-stroke-color': '#fff'
+        }
+      });
+    });
+  }, []);
+
+  // Update vessels on rAF flush
+  useEffect(() => {
+    if (!map.current || !map.current.isStyleLoaded()) return;
+    const source = map.current.getSource('vessels');
+    if (source) {
+      source.setData(positionsGeoJson);
+    }
+  }, [positionsGeoJson]);
+  
+  // Update selected alert visualizations
+  useEffect(() => {
+    if (!map.current || !map.current.isStyleLoaded()) return;
+    
+    const pathSource = map.current.getSource('alert-path');
+    const idSource = map.current.getSource('identity-conflict');
+    
+    if (!selectedAlertId) {
+      if (pathSource) pathSource.setData({ type: 'FeatureCollection', features: [] });
+      if (idSource) idSource.setData({ type: 'FeatureCollection', features: [] });
+      return;
+    }
+    
+    const alert = alerts.find(a => a.alert_id === selectedAlertId);
+    if (!alert) return;
+    
+    // Draw dotted path or cone for suspected_dark_transit
+    if (alert.type === 'suspected_dark_transit') {
+      const { lat, lon } = alert.position;
+      // Simple projection for demo purposes
+      const features = [{
+        type: 'Feature',
+        geometry: {
+          type: 'LineString',
+          coordinates: [
+            [lon, lat],
+            [lon + 0.5, lat + 0.5] // Fake projected path
+          ]
+        }
+      }];
+      if (pathSource) pathSource.setData({ type: 'FeatureCollection', features });
+      if (idSource) idSource.setData({ type: 'FeatureCollection', features: [] });
+    } 
+    // Show both positions for identity conflict
+    else if (alert.type === 'identity_conflict') {
+      const features = [{
+        type: 'Feature',
+        geometry: { type: 'Point', coordinates: [alert.position.lon, alert.position.lat] }
+      }];
+      
+      if (alert.evidence?.conflicting_position) {
+        features.push({
+          type: 'Feature',
+          geometry: { 
+            type: 'Point', 
+            coordinates: [alert.evidence.conflicting_position.lon, alert.evidence.conflicting_position.lat] 
+          }
+        });
+      }
+      
+      if (idSource) idSource.setData({ type: 'FeatureCollection', features });
+      if (pathSource) pathSource.setData({ type: 'FeatureCollection', features: [] });
+    } else {
+      if (pathSource) pathSource.setData({ type: 'FeatureCollection', features: [] });
+      if (idSource) idSource.setData({ type: 'FeatureCollection', features: [] });
+    }
+  }, [selectedAlertId, alerts]);
+
+  return (
+    <div ref={mapContainer} style={{ width: '100%', height: '100%' }} />
+  );
+}
