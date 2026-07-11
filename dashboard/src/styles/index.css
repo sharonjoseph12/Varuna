@@ -14,6 +14,7 @@
   --color-fishing: #9B59B6;
   --color-identity: #E74C3C;
   --color-unresolved: #95A5A6;
+  --color-sts: #F39C12;
   
   --glass-bg: rgba(15, 23, 42, 0.65);
   --glass-border: 1px solid rgba(255, 255, 255, 0.08);
@@ -72,3 +73,5 @@ body {
 .text-identity_conflict { color: var(--color-identity); }
 .bg-unresolved_dark_vessel { background-color: var(--color-unresolved); }
 .text-unresolved_dark_vessel { color: var(--color-unresolved); }
+.bg-suspected_sts_transfer { background-color: var(--color-sts); }
+.text-suspected_sts_transfer { color: var(--color-sts); }

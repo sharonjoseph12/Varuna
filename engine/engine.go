@@ -24,6 +24,17 @@ type Engine struct {
 	alertStore   map[string]*Alert
 	alertStoreMu sync.RWMutex
 
+	// Trust engine
+	trustScores map[string]*TrustScore
+	trustMu     sync.RWMutex
+
+	// Dark intent model (simulated ONNX)
+	darkModel *DarkIntentModel
+
+	// Rendezvous / STS tracking
+	rendezvous   map[string]*RendezvousState
+	rendezvousMu sync.Mutex
+
 	alertCh    chan Alert
 	positionCh chan PositionUpdate
 
@@ -49,12 +60,15 @@ const latencyBufSize = 10000
 // NewEngine creates and initializes the engine with precomputed grid.
 func NewEngine(cfg Config, zones []Zone) *Engine {
 	e := &Engine{
-		cfg:        cfg,
-		zones:      zones,
-		grid:       NewGrid(cfg.GridCellSizeDeg, zones),
-		vessels:    make(map[string]*VesselState),
-		alertStore: make(map[string]*Alert),
-		alertCh:    make(chan Alert, cfg.AlertChannelSize),
+		cfg:         cfg,
+		zones:       zones,
+		grid:        NewGrid(cfg.GridCellSizeDeg, zones),
+		vessels:     make(map[string]*VesselState),
+		alertStore:  make(map[string]*Alert),
+		trustScores: make(map[string]*TrustScore),
+		darkModel:   NewDarkIntentModel(),
+		rendezvous:  make(map[string]*RendezvousState),
+		alertCh:     make(chan Alert, cfg.AlertChannelSize),
 		positionCh: make(chan PositionUpdate, cfg.PositionChannelSize),
 		latencies:  make([]float64, latencyBufSize),
 		startTime:  time.Now(),
@@ -100,8 +114,9 @@ func (e *Engine) Ingest(in <-chan AISMessage) {
 				batch = batch[:0]
 				ingestTimes = ingestTimes[:0]
 			}
-			// Also run absence checks on tick
+			// Also run periodic checks on tick
 			e.runAbsenceChecks()
+			e.checkRendezvous()
 		}
 	}
 }
@@ -148,6 +163,9 @@ func (e *Engine) processMessage(msg AISMessage, ingestTime time.Time) {
 
 	// Loitering check
 	e.checkLoitering(vs, msg, ingestTime)
+
+	// Trust evaluation
+	e.evaluateTrust(msg, ingestTime)
 
 	// Handle reappearance for absence engine
 	e.handleReappearance(vs, msg, ingestTime)

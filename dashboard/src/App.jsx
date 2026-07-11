@@ -5,7 +5,7 @@ import { useAlerts } from './hooks/useAlerts';
 import { useMetrics } from './hooks/useMetrics';
 import MapView from './components/MapView';
 import MetricsPanel from './components/MetricsPanel';
-import AlertPanel from './components/AlertPanel';
+import CasePanel from './components/CasePanel';
 import JitterControl from './components/JitterControl';
 import Toast from './components/Toast';
 
@@ -19,6 +19,7 @@ function App() {
   const metrics = useMetrics(METRICS_URL);
   
   const [selectedAlertId, setSelectedAlertId] = useState(null);
+  const [sarVesselId, setSarVesselId] = useState(null);
   
   const isConnected = positionsStatus === 'CONNECTED' && alertsStatus === 'CONNECTED';
 
@@ -35,6 +36,7 @@ function App() {
           positionsGeoJson={positionsGeoJson} 
           alerts={alerts}
           selectedAlertId={selectedAlertId}
+          sarVesselId={sarVesselId}
         />
       </div>
 
@@ -44,10 +46,12 @@ function App() {
         </div>
         
         <div className="right-panel">
-          <AlertPanel 
+          <CasePanel 
             alerts={alerts} 
             selectedAlertId={selectedAlertId}
             onSelectAlert={setSelectedAlertId}
+            sarModeEnabled={!!sarVesselId}
+            toggleSarMode={(vId) => setSarVesselId(prev => prev === vId ? null : vId)}
           />
         </div>
         

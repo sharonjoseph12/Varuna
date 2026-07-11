@@ -9,8 +9,10 @@ type AISMessage struct {
 	Lat         float64 `json:"lat"`
 	Lon         float64 `json:"lon"`
 	HeadingDeg  float64 `json:"heading"`
-	SpeedKnots  float64 `json:"speed_knots"`
-	TimestampMs int64   `json:"timestamp_ms"`
+	SpeedKnots   float64 `json:"speed_knots"`
+	TimestampMs  int64   `json:"timestamp_ms"`
+	VesselType   string  `json:"vessel_type,omitempty"`    // e.g. "cargo", "tanker", "fast_craft"
+	SecurityHash string  `json:"security_hash,omitempty"` // HMAC for MITM spoofing check
 }
 
 // Alert is the outbound detection result sent to teammate 2's WebSocket fan-out.

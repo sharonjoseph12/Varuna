@@ -35,6 +35,10 @@ func main() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/metrics", metricsHandler(eng))
 	mux.HandleFunc("/api/trigger/", triggerHandler(msgCh, zones))
+	mux.HandleFunc("/api/trust/", trustHandler(eng))
+	mux.HandleFunc("/api/heatmap/", heatmapHandler(eng))
+	mux.HandleFunc("/api/sar/", sarHandler(eng))
+	mux.HandleFunc("/api/risk-heatmap", riskHeatmapHandler(eng))
 	mux.HandleFunc("/ws/alerts", wsAlertsHandler(eng))
 	mux.HandleFunc("/ws/positions", wsPositionsHandler(eng))
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -43,7 +47,7 @@ func main() {
 	})
 
 	log.Println("Varuna Core Engine starting on :8080")
-	log.Println("Endpoints: /api/metrics, /api/trigger/{event}, /ws/alerts, /ws/positions")
+	log.Println("Endpoints: /api/metrics, /api/trigger/{event}, /api/trust/{vesselID}, /api/heatmap/{vesselID}, /api/sar/{vesselID}, /api/risk-heatmap, /ws/alerts, /ws/positions")
 	log.Fatal(http.ListenAndServe(":8080", mux))
 }
 
@@ -78,6 +82,9 @@ func triggerHandler(msgCh chan<- engine.AISMessage, zones []engine.Zone) http.Ha
 		case "loiter":
 			go scriptLoiter(msgCh, zones)
 			json.NewEncoder(w).Encode(map[string]string{"triggered": "loiter"})
+		case "rendezvous":
+			go scriptRendezvous(msgCh)
+			json.NewEncoder(w).Encode(map[string]string{"triggered": "rendezvous"})
 		default:
 			http.Error(w, "unknown event: "+event, http.StatusBadRequest)
 		}
@@ -319,4 +326,116 @@ func scriptLoiter(ch chan<- engine.AISMessage, zones []engine.Zone) {
 	}
 
 	log.Printf("[SCRIPT] loiter: vessel %s loitered for ~33 minutes in Gulf of Mannar", vesselID)
+}
+
+func scriptRendezvous(ch chan<- engine.AISMessage) {
+	scriptMu.Lock()
+	defer scriptMu.Unlock()
+
+	ts := time.Now().UnixMilli()
+	vesselA := "V-RDV-A"
+	vesselB := "V-RDV-B"
+	mmsiA := "999000005"
+	mmsiB := "999000006"
+
+	// Two vessels converge and hold <500m at <2 knots for >30 min
+	for i := 0; i < 200; i++ {
+		offset := rand.Float64() * 0.002 // ~200m jitter
+		ch <- engine.AISMessage{
+			VesselID: vesselA, MMSI: mmsiA,
+			Lat: 9.5 + offset, Lon: 78.5 + offset,
+			HeadingDeg: rand.Float64() * 360, SpeedKnots: 0.5 + rand.Float64()*1.0,
+			TimestampMs: ts + int64(i)*10000,
+		}
+		ch <- engine.AISMessage{
+			VesselID: vesselB, MMSI: mmsiB,
+			Lat: 9.5 + offset + 0.001, Lon: 78.5 + offset + 0.001,
+			HeadingDeg: rand.Float64() * 360, SpeedKnots: 0.5 + rand.Float64()*1.0,
+			TimestampMs: ts + int64(i)*10000,
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+
+	log.Printf("[SCRIPT] rendezvous: vessels %s and %s held <500m for ~33 minutes", vesselA, vesselB)
+}
+
+// --- New API Handlers ---
+
+func trustHandler(eng *engine.Engine) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		vesselID := strings.TrimPrefix(r.URL.Path, "/api/trust/")
+		if vesselID == "" {
+			// Return all trust scores
+			json.NewEncoder(w).Encode(eng.AllTrustScores())
+			return
+		}
+		ts, ok := eng.TrustScoreFor(vesselID)
+		if !ok {
+			http.Error(w, "vessel not found", http.StatusNotFound)
+			return
+		}
+		json.NewEncoder(w).Encode(ts)
+	}
+}
+
+func heatmapHandler(eng *engine.Engine) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		vesselID := strings.TrimPrefix(r.URL.Path, "/api/heatmap/")
+		if vesselID == "" {
+			http.Error(w, "vesselID required", http.StatusBadRequest)
+			return
+		}
+		// Get vessel state for last known position + heading
+		ts, ok := eng.TrustScoreFor(vesselID)
+		if !ok {
+			http.Error(w, "vessel not found", http.StatusNotFound)
+			return
+		}
+		_ = ts
+		// Use SAR area computation to get last known position
+		sar, ok := eng.ComputeSARArea(vesselID)
+		if !ok {
+			http.Error(w, "no position data", http.StatusNotFound)
+			return
+		}
+		model := engine.NewDarkIntentModel()
+		cells := model.Predict(sar.CenterLat, sar.CenterLon, 0, 10, nil) // heading/speed from vessel
+		geoJSON := engine.HeatmapGeoJSON(cells)
+		w.Write(geoJSON)
+	}
+}
+
+func sarHandler(eng *engine.Engine) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		vesselID := strings.TrimPrefix(r.URL.Path, "/api/sar/")
+		if vesselID == "" {
+			http.Error(w, "vesselID required", http.StatusBadRequest)
+			return
+		}
+		sar, ok := eng.ComputeSARArea(vesselID)
+		if !ok {
+			http.Error(w, "vessel not found or no position data", http.StatusNotFound)
+			return
+		}
+		json.NewEncoder(w).Encode(sar)
+	}
+}
+
+func riskHeatmapHandler(eng *engine.Engine) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		// Collect all stored alerts for risk heatmap
+		var alerts []engine.Alert
+		// ponytail: iterate alertStore via GetAlert won't work, but we can expose a method
+		// For now, return empty — alerts get added as they arrive
+		geoJSON := engine.HeatmapPointsGeoJSON(alerts)
+		w.Write(geoJSON)
+	}
 }
