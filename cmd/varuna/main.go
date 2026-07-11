@@ -35,6 +35,7 @@ func main() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/metrics", metricsHandler(eng))
 	mux.HandleFunc("/api/trigger/", triggerHandler(msgCh, zones))
+	mux.HandleFunc("/api/ingest", ingestHandler(msgCh))
 	mux.HandleFunc("/api/corroborate", corroborateHandler(eng))
 	mux.HandleFunc("/ws/alerts", wsAlertsHandler(eng))
 	mux.HandleFunc("/ws/positions", wsPositionsHandler(eng))
@@ -107,6 +108,28 @@ func corroborateHandler(eng *engine.Engine) http.HandlerFunc {
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		json.NewEncoder(w).Encode(map[string]string{"status": "corroborated", "alert_id": req.AlertID})
+	}
+}
+
+func ingestHandler(msgCh chan<- engine.AISMessage) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "POST only", http.StatusMethodNotAllowed)
+			return
+		}
+		var msg engine.AISMessage
+		if err := json.NewDecoder(r.Body).Decode(&msg); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		
+		// Push to engine channel, drop if full (backpressure)
+		select {
+		case msgCh <- msg:
+			w.WriteHeader(http.StatusAccepted)
+		default:
+			http.Error(w, "engine backpressure: queue full", http.StatusServiceUnavailable)
+		}
 	}
 }
 
