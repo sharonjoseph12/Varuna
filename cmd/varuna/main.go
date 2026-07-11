@@ -242,7 +242,7 @@ func scriptDarkTransit(ch chan<- engine.AISMessage, zones []engine.Zone) {
 	}
 
 	log.Printf("[SCRIPT] dark_transit: vessel %s going silent near boundary", vesselID)
-	// No more messages — vessel is dark
+	// No more messages ΓÇö vessel is dark
 }
 
 func scriptBoundaryJitter(ch chan<- engine.AISMessage, zones []engine.Zone) {
@@ -291,7 +291,7 @@ func scriptMMSIConflict(ch chan<- engine.AISMessage) {
 
 	ch <- engine.AISMessage{
 		VesselID: "V-SPOOF-B", MMSI: spoofedMMSI,
-		Lat: 12.0, Lon: 74.0, // ~300km away, 100ms later — impossible
+		Lat: 12.0, Lon: 74.0, // ~300km away, 100ms later ΓÇö impossible
 		HeadingDeg: 270, SpeedKnots: 10,
 		TimestampMs: ts + 100,
 	}

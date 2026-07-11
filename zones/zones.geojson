@@ -1,0 +1,293 @@
+{
+    "type": "FeatureCollection",
+    "features": [
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "Bay of Bengal EEZ",
+                "zone_type": "offshore",
+                "silence_tolerance_s": 2400,
+                "boundary_buffer_km": 5.0
+            },
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [
+                    [
+                        [
+                            80.0,
+                            5.0
+                        ],
+                        [
+                            100.0,
+                            5.0
+                        ],
+                        [
+                            100.0,
+                            22.0
+                        ],
+                        [
+                            80.0,
+                            22.0
+                        ],
+                        [
+                            80.0,
+                            5.0
+                        ]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "Strait of Malacca",
+                "zone_type": "coastal",
+                "silence_tolerance_s": 120,
+                "boundary_buffer_km": 2.0
+            },
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [
+                    [
+                        [
+                            99.0,
+                            1.0
+                        ],
+                        [
+                            104.5,
+                            1.0
+                        ],
+                        [
+                            104.5,
+                            6.5
+                        ],
+                        [
+                            99.0,
+                            6.5
+                        ],
+                        [
+                            99.0,
+                            1.0
+                        ]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "Persian Gulf",
+                "zone_type": "coastal",
+                "silence_tolerance_s": 120,
+                "boundary_buffer_km": 3.0
+            },
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [
+                    [
+                        [
+                            48.0,
+                            22.0
+                        ],
+                        [
+                            60.0,
+                            22.0
+                        ],
+                        [
+                            60.0,
+                            30.0
+                        ],
+                        [
+                            48.0,
+                            30.0
+                        ],
+                        [
+                            48.0,
+                            22.0
+                        ]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "South China Sea",
+                "zone_type": "offshore",
+                "silence_tolerance_s": 3600,
+                "boundary_buffer_km": 8.0
+            },
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [
+                    [
+                        [
+                            109.0,
+                            0.0
+                        ],
+                        [
+                            122.0,
+                            0.0
+                        ],
+                        [
+                            122.0,
+                            22.0
+                        ],
+                        [
+                            109.0,
+                            22.0
+                        ],
+                        [
+                            109.0,
+                            0.0
+                        ]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "Gulf of Guinea",
+                "zone_type": "offshore",
+                "silence_tolerance_s": 3600,
+                "boundary_buffer_km": 5.0
+            },
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [
+                    [
+                        [
+                            -5.0,
+                            -5.0
+                        ],
+                        [
+                            10.0,
+                            -5.0
+                        ],
+                        [
+                            10.0,
+                            5.0
+                        ],
+                        [
+                            -5.0,
+                            5.0
+                        ],
+                        [
+                            -5.0,
+                            -5.0
+                        ]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "Mediterranean EEZ West",
+                "zone_type": "coastal",
+                "silence_tolerance_s": 180,
+                "boundary_buffer_km": 2.0
+            },
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [
+                    [
+                        [
+                            -5.5,
+                            35.0
+                        ],
+                        [
+                            6.0,
+                            35.0
+                        ],
+                        [
+                            6.0,
+                            44.0
+                        ],
+                        [
+                            -5.5,
+                            44.0
+                        ],
+                        [
+                            -5.5,
+                            35.0
+                        ]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "North Sea",
+                "zone_type": "offshore",
+                "silence_tolerance_s": 2400,
+                "boundary_buffer_km": 4.0
+            },
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [
+                    [
+                        [
+                            2.0,
+                            51.0
+                        ],
+                        [
+                            9.0,
+                            51.0
+                        ],
+                        [
+                            9.0,
+                            58.0
+                        ],
+                        [
+                            2.0,
+                            58.0
+                        ],
+                        [
+                            2.0,
+                            51.0
+                        ]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "Barents Sea Approach",
+                "zone_type": "open_ocean",
+                "silence_tolerance_s": 18000,
+                "boundary_buffer_km": 15.0
+            },
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [
+                    [
+                        [
+                            15.0,
+                            70.0
+                        ],
+                        [
+                            40.0,
+                            70.0
+                        ],
+                        [
+                            40.0,
+                            78.0
+                        ],
+                        [
+                            15.0,
+                            78.0
+                        ],
+                        [
+                            15.0,
+                            70.0
+                        ]
+                    ]
+                ]
+            }
+        }
+    ]
+}

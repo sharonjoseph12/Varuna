@@ -1,0 +1,8 @@
+onnxruntime>=1.17.0
+numpy>=1.24.0
+Pillow>=10.0.0
+# GDAL is optional — only needed if reading real Sentinel-1 GRD tiles.
+# Install via conda (recommended) or system package manager:
+#   conda install -c conda-forge gdal
+#   OR: apt install python3-gdal
+# gdal  # uncomment if available

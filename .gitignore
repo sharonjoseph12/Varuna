@@ -1,5 +1,23 @@
+# Go
 *.exe
 *.test
 *.out
 vendor/
 varuna.db
+
+# Member 3 — data files
+data/sar/*.tiff
+data/sar/*.tif
+data/sar/*.zip
+data/models/*.onnx
+benchmark-results.json
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# OS
+.DS_Store
+Thumbs.db
