@@ -12,8 +12,8 @@ export default function MapView({ positionsGeoJson, alerts, selectedAlertId }) {
     map.current = new maplibregl.Map({
       container: mapContainer.current,
       style: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
-      center: [-72.5, 40.0],
-      zoom: 6,
+      center: [72.0, 15.0], // Indian Ocean / South Asia — live AIS traffic dense here
+      zoom: 3,
       interactive: true
     });
     
@@ -24,35 +24,30 @@ export default function MapView({ positionsGeoJson, alerts, selectedAlertId }) {
         data: { type: 'FeatureCollection', features: [] }
       });
       
-      // Triangle marker pointing up
+      // Circle marker — trust score drives colour; red pulse for low-trust vessels
       map.current.addLayer({
         id: 'vessels-layer',
-        type: 'symbol',
+        type: 'circle',
         source: 'vessels',
-        layout: {
-          'icon-image': 'triangle-11', // MapLibre built-in icon or use SDF
-          'icon-rotate': ['get', 'heading'],
-          'icon-allow-overlap': true,
-          'icon-size': 1.5
-        },
         paint: {
-          'icon-opacity': [
+          'circle-radius': 4,
+          'circle-color': [
             'case',
-            ['==', ['get', 'is_dark'], true], 0.4,
-            1.0
-          ],
-          'icon-color': [
-            'case',
-            ['==', ['get', 'is_dark'], true], '#ffffff',
-            ['==', ['get', 'trust_score'], null], '#fff',
             ['<', ['get', 'trust_score'], 0.5], '#ef4444',
             ['<=', ['get', 'trust_score'], 0.8], '#f59e0b',
             '#10b981'
+          ],
+          'circle-stroke-width': 1,
+          'circle-stroke-color': 'rgba(0,0,0,0.4)',
+          'circle-opacity': [
+            'case',
+            ['==', ['get', 'is_dark'], true], 0.4,
+            1.0
           ]
         }
       });
       
-      // Add pulsing aura for spoofed vessels
+      // Pulsing aura for spoofed / low-trust vessels
       map.current.addLayer({
         id: 'vessels-pulse-layer',
         type: 'circle',
@@ -61,10 +56,10 @@ export default function MapView({ positionsGeoJson, alerts, selectedAlertId }) {
         paint: {
           'circle-radius': 10,
           'circle-color': '#ef4444',
-          'circle-opacity': 0.5,
+          'circle-opacity': 0.35,
           'circle-pitch-alignment': 'map'
         }
-      }, 'vessels-layer'); // insert before vessels-layer
+      });
       
       // Add Alert Cones / Dotted Lines
       map.current.addSource('alert-path', {
