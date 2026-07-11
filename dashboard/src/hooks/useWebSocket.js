@@ -17,7 +17,7 @@ export function useWebSocket(url) {
       if (!isActive) return;
       
       setStatus('CONNECTING');
-      const ws = new WebSocket(url);
+      const ws = new EventSource(url);
       wsRef.current = ws;
 
       ws.onopen = () => {
@@ -32,17 +32,12 @@ export function useWebSocket(url) {
         }
       };
 
-      ws.onclose = () => {
+      ws.onerror = (err) => {
         if (!isActive) return;
         setStatus('DISCONNECTED');
-        // Exponential backoff
+        ws.close(); // Close it so we can manually backoff
         timeoutId = setTimeout(connect, backoffRef.current);
         backoffRef.current = Math.min(backoffRef.current * 1.5, maxBackoff);
-      };
-
-      ws.onerror = (err) => {
-        // Error will immediately be followed by close
-        console.error("WebSocket error:", err);
       };
     }
 

@@ -16,12 +16,18 @@ export function useMetrics(url) {
         const res = await fetch(url);
         const data = await res.json();
         
+        const mappedData = {
+          throughput_per_sec: data.throughput_msgs_sec || 0,
+          p50_latency_ms: data.latency_p50_ms || 0,
+          p99_latency_ms: data.latency_p99_ms || 0
+        };
+        
         setMetrics(prev => {
-          const newHistory = [...prev.history, data];
+          const newHistory = [...prev.history, mappedData];
           if (newHistory.length > 60) newHistory.shift(); // Keep last 60 points
           
           return {
-            ...data,
+            ...mappedData,
             history: newHistory
           };
         });

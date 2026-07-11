@@ -9,9 +9,9 @@ import AlertPanel from './components/AlertPanel';
 import JitterControl from './components/JitterControl';
 import Toast from './components/Toast';
 
-const POSITIONS_URL = 'ws://localhost:8080/ws/positions';
-const ALERTS_URL = 'ws://localhost:8080/ws/alerts';
-const METRICS_URL = 'http://localhost:8080/metrics';
+const POSITIONS_URL = 'http://localhost:8080/ws/positions';
+const ALERTS_URL = 'http://localhost:8080/ws/alerts';
+const METRICS_URL = 'http://localhost:8080/api/metrics';
 
 function App() {
   const { status: positionsStatus, geoJson: positionsGeoJson } = usePositions(POSITIONS_URL);
