@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sharonjoseph12/Varuna/engine"
+	"github.com/sharonjoseph12/Varuna/internal/engine"
 )
 
 func main() {
@@ -28,8 +28,8 @@ func main() {
 	go eng.Ingest(msgCh)
 
 	// Start alert/position consumers (log to console for standalone mode)
-	go consumeAlerts(eng)
-	go consumePositions(eng)
+	// go consumeAlerts(eng)
+	// go consumePositions(eng)
 
 	// HTTP server
 	mux := http.NewServeMux()
@@ -79,6 +79,9 @@ func triggerHandler(msgCh chan<- engine.AISMessage, zones []engine.Zone) http.Ha
 		case "loiter":
 			go scriptLoiter(msgCh, zones)
 			json.NewEncoder(w).Encode(map[string]string{"triggered": "loiter"})
+		case "distress":
+			go scriptDistress(msgCh)
+			json.NewEncoder(w).Encode(map[string]string{"triggered": "distress"})
 		default:
 			http.Error(w, "unknown event: "+event, http.StatusBadRequest)
 		}
@@ -124,6 +127,9 @@ func wsAlertsHandler(eng *engine.Engine) http.HandlerFunc {
 			http.Error(w, "streaming unsupported", http.StatusInternalServerError)
 			return
 		}
+		
+		w.WriteHeader(http.StatusOK)
+		flusher.Flush()
 
 		alertCh := eng.Alerts()
 		for {
@@ -155,6 +161,9 @@ func wsPositionsHandler(eng *engine.Engine) http.HandlerFunc {
 			http.Error(w, "streaming unsupported", http.StatusInternalServerError)
 			return
 		}
+		
+		w.WriteHeader(http.StatusOK)
+		flusher.Flush()
 
 		posCh := eng.Positions()
 		for {
@@ -206,6 +215,7 @@ func miniGenerator(ch chan<- engine.AISMessage, zones []engine.Zone) {
 		{"V-006", "666666666", 12.0, 68.0, 135, 14},  // Arabian Sea
 		{"V-007", "777777777", 9.0, 80.5, 225, 11},   // Sri Lanka area
 		{"V-008", "888888888", 9.5, 78.8, 90, 9},     // Near Gulf of Mannar boundary
+		{"V-CRIMINAL", "999999999", 10.5, 79.0, 45, 20}, // Spoofing demo: perfect straight line
 	}
 
 	ts := time.Now().UnixMilli()
@@ -218,8 +228,13 @@ func miniGenerator(ch chan<- engine.AISMessage, zones []engine.Zone) {
 			v.lat += math.Cos(v.hdg*math.Pi/180) * v.spd * 0.0001
 			v.lon += math.Sin(v.hdg*math.Pi/180) * v.spd * 0.0001
 
-			// Small random heading variation
-			v.hdg += (r.Float64() - 0.5) * 5
+			speed := v.spd
+			
+			// Small random heading variation for normal ships
+			if v.id != "V-CRIMINAL" {
+				v.hdg += (r.Float64() - 0.5) * 5
+				speed += (r.Float64() - 0.5) * 2
+			}
 
 			ts += 100 // 100ms between messages per vessel
 
@@ -229,7 +244,7 @@ func miniGenerator(ch chan<- engine.AISMessage, zones []engine.Zone) {
 				Lat:         v.lat,
 				Lon:         v.lon,
 				HeadingDeg:  v.hdg,
-				SpeedKnots:  v.spd + (r.Float64()-0.5)*2,
+				SpeedKnots:  speed,
 				TimestampMs: ts,
 			}
 
@@ -345,4 +360,26 @@ func scriptLoiter(ch chan<- engine.AISMessage, zones []engine.Zone) {
 	}
 
 	log.Printf("[SCRIPT] loiter: vessel %s loitered for ~33 minutes in Gulf of Mannar", vesselID)
+}
+
+func scriptDistress(ch chan<- engine.AISMessage) {
+	scriptMu.Lock()
+	defer scriptMu.Unlock()
+
+	ts := time.Now().UnixMilli()
+	vesselID := "V-DISTRESS-001"
+	mmsi := "999000003"
+
+	// High trust: 15 perfect straight line updates
+	for i := 0; i < 15; i++ {
+		ch <- engine.AISMessage{
+			VesselID: vesselID, MMSI: mmsi,
+			Lat: 15.0 + float64(i)*0.01, Lon: 65.0, // Open Arabian Sea (far from MPA)
+			HeadingDeg: 0, SpeedKnots: 10,
+			TimestampMs: ts + int64(i)*1000,
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+
+	log.Printf("[SCRIPT] distress: vessel %s going silent in open sea", vesselID)
 }

@@ -40,40 +40,13 @@ func (e *Engine) runAbsenceChecks() {
 
 		// Score confidence
 		confidence := e.scoreAbsenceConfidence(vs, silenceMs, toleranceMs, boundaryProximityKm, zone)
+		// We can still use confidence if we want, but EvaluateVessel uses IntentScore
+		_ = confidence
 
 		vs.AbsState = AbsenceSuspiciousDark
-
-		alert := Alert{
-			AlertID:   newAlertID(),
-			Type:      "suspected_dark_transit",
-			VesselID:  vs.VesselID,
-			Timestamp: time.Now().UTC().Format(time.RFC3339),
-			Position:  LatLon{Lat: vs.LastLat, Lon: vs.LastLon},
-			Zone:      zone.Name,
-			Confidence: confidence,
-			Evidence: map[string]interface{}{
-				"silence_duration_s":    float64(silenceMs) / 1000,
-				"boundary_proximity_km": boundaryProximityKm,
-				"zone_tolerance_s":      zone.SilenceToleranceSec,
-				"last_heading":          vs.lastHeading(),
-				"last_speed_knots":      vs.lastSpeed(),
-			},
-			ReasoningTrace: ReasoningTrace{
-				InputsEvaluated: []string{
-					"silence_ratio", "boundary_proximity",
-					"historical_gap_pattern", "time_of_day",
-				},
-				ThresholdsUsed: map[string]float64{
-					"zone_tolerance_s":      float64(zone.SilenceToleranceSec),
-					"boundary_buffer_km":    zone.BoundaryBufferKm,
-					"silence_duration_s":    float64(silenceMs) / 1000,
-				},
-				ModalitiesAvailable: []string{"ais"},
-				EngineVersion:       "absence-v1",
-			},
-			Corroboration: Corroboration{Status: "none"},
-		}
-		e.emitAlert(alert, time.Now())
+		vs.IsDark = true
+		
+		e.EvaluateVessel(vs, time.Now())
 	}
 }
 
