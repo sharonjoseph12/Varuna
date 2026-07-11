@@ -21,10 +21,11 @@ type Alert struct {
 	Timestamp  string  `json:"timestamp"` // ISO8601
 	Position   LatLon  `json:"position"`
 	Zone       string  `json:"zone"`
-	Confidence float64 `json:"confidence"`
-	Evidence   map[string]interface{} `json:"evidence"`
-	ReasoningTrace ReasoningTrace `json:"reasoning_trace"`
-	Corroboration  Corroboration  `json:"corroboration"`
+	Confidence        float64                `json:"confidence"`
+	Evidence          map[string]interface{} `json:"evidence"`
+	ReasoningTrace    ReasoningTrace         `json:"reasoning_trace"`
+	Corroboration     Corroboration          `json:"corroboration"`
+	RecommendedAction string                 `json:"recommended_action,omitempty"`
 }
 
 type LatLon struct {
@@ -46,12 +47,21 @@ type Corroboration struct {
 
 // PositionUpdate is sent to teammate 2 for live map rendering.
 type PositionUpdate struct {
-	VesselID    string  `json:"vessel_id"`
-	Lat         float64 `json:"lat"`
-	Lon         float64 `json:"lon"`
-	HeadingDeg  float64 `json:"heading"`
-	SpeedKnots  float64 `json:"speed_knots"`
-	TimestampMs int64   `json:"timestamp_ms"`
+	VesselID       string  `json:"vessel_id"`
+	Lat            float64 `json:"lat"`
+	Lon            float64 `json:"lon"`
+	HeadingDeg     float64 `json:"heading"`
+	SpeedKnots     float64 `json:"speed_knots"`
+	TimestampMs    int64   `json:"timestamp_ms"`
+	TrustScore     float32 `json:"trust_score"`
+	BehaviorStatus string  `json:"status"`
+	
+	// Fusion fields
+	IsDark      bool    `json:"is_dark"`
+	IntentScore float32 `json:"intent_score"`
+	Priority    string  `json:"priority"`
+	CaseLabel   string  `json:"case_label"`
+	Action      string  `json:"action"`
 }
 
 // Zone defines a geofence polygon with precomputed grid cells.
@@ -150,6 +160,23 @@ type VesselState struct {
 	GapHistory    []int64 // historical gap durations in ms
 	LoiterStart   int64   // timestamp ms when loitering began, 0 if not loitering
 	LoiterAnchor  LatLon  // center point of loitering
+
+	// Trust model state
+	TrustBuffer    [10][3]float32 // Sliding window for ONNX input
+	TrustBufferIdx int            // Current index in sliding window
+	TrustScore     float32        // Current trust score (0.0 to 1.0)
+	BehaviorStatus string         // "Verified", "Suspicious", "Spoofed"
+
+	// Intelligence Fusion fields
+	IsDark       bool
+	IntentScore  float32
+	Priority     string // "NORMAL", "HIGH", "CRITICAL", "EMERGENCY"
+	CaseLabel    string
+	Action       string
+	DistToMPA    float32
+	DistToPort   float32
+	Type         float32
+
 	mu            sync.Mutex
 }
 
