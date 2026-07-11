@@ -1,0 +1,11 @@
+data/sar/*.tiff
+data/sar/*.tif
+data/sar/*.zip
+data/models/*.onnx
+benchmark-results.json
+*.exe
+*.out
+__pycache__/
+*.pyc
+.venv/
+venv/
