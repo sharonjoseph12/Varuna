@@ -35,6 +35,7 @@ func main() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/metrics", metricsHandler(eng))
 	mux.HandleFunc("/api/trigger/", triggerHandler(msgCh, zones))
+	mux.HandleFunc("/api/corroborate", corroborateHandler(eng))
 	mux.HandleFunc("/ws/alerts", wsAlertsHandler(eng))
 	mux.HandleFunc("/ws/positions", wsPositionsHandler(eng))
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -81,6 +82,31 @@ func triggerHandler(msgCh chan<- engine.AISMessage, zones []engine.Zone) http.Ha
 		default:
 			http.Error(w, "unknown event: "+event, http.StatusBadRequest)
 		}
+	}
+}
+
+type CorroborateRequest struct {
+	AlertID  string                 `json:"alert_id"`
+	Source   string                 `json:"source"`
+	Evidence map[string]interface{} `json:"evidence"`
+}
+
+func corroborateHandler(eng *engine.Engine) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "POST only", http.StatusMethodNotAllowed)
+			return
+		}
+		var req CorroborateRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		eng.Corroborate(req.AlertID, req.Source, req.Evidence)
+		
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		json.NewEncoder(w).Encode(map[string]string{"status": "corroborated", "alert_id": req.AlertID})
 	}
 }
 
