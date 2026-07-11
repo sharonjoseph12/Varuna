@@ -24,24 +24,7 @@ export default function MapView({ positionsGeoJson, alerts, selectedAlertId, sar
         data: zones
       });
       
-      map.current.addLayer({
-        id: 'zones-fill',
-        type: 'fill',
-        source: 'zones',
-        paint: {
-          'fill-color': ['get', 'fill_color'],
-        }
-      });
-      
-      map.current.addLayer({
-        id: 'zones-outline',
-        type: 'line',
-        source: 'zones',
-        paint: {
-          'line-color': ['get', 'stroke_color'],
-          'line-width': 2
-        }
-      });
+      // Zones rendering removed per user request
       
       // Add Vessels
       map.current.addSource('vessels', {
@@ -49,19 +32,16 @@ export default function MapView({ positionsGeoJson, alerts, selectedAlertId, sar
         data: { type: 'FeatureCollection', features: [] }
       });
       
-      // Triangle marker pointing up
+      // Changed from symbol to circle to ensure it renders without needing an external sprite
       map.current.addLayer({
         id: 'vessels-layer',
-        type: 'symbol',
+        type: 'circle',
         source: 'vessels',
-        layout: {
-          'icon-image': 'triangle-11', // MapLibre built-in icon or use SDF
-          'icon-rotate': ['get', 'heading'],
-          'icon-allow-overlap': true,
-          'icon-size': 1.5
-        },
         paint: {
-          'icon-color': '#fff'
+          'circle-radius': 4,
+          'circle-color': '#ffffff',
+          'circle-stroke-width': 1,
+          'circle-stroke-color': '#000000'
         }
       });
       
