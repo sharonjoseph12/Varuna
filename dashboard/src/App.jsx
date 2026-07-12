@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import './App.css';
 import { usePositions } from './hooks/usePositions';
 import { useAlerts } from './hooks/useAlerts';
@@ -8,6 +8,7 @@ import MetricsPanel from './components/MetricsPanel';
 import CasePanel from './components/CasePanel';
 import JitterControl from './components/JitterControl';
 import Toast from './components/Toast';
+import VesselDetailsModal from './components/VesselDetailsModal';
 
 const POSITIONS_URL = 'ws://localhost:8080/ws/positions';
 const ALERTS_URL = 'ws://localhost:8080/ws/alerts';
@@ -20,8 +21,27 @@ function App() {
   
   const [selectedAlertId, setSelectedAlertId] = useState(null);
   const [sarVesselId, setSarVesselId] = useState(null);
+  const [detailVesselId, setDetailVesselId] = useState(null);
   
   const isConnected = positionsStatus === 'CONNECTED' && alertsStatus === 'CONNECTED';
+
+  const handleVesselClick = useCallback((vesselId) => {
+    setDetailVesselId(vesselId);
+  }, []);
+
+  // Find the vessel's latest data from GeoJSON for the modal
+  const detailVesselData = detailVesselId
+    ? (() => {
+        const f = positionsGeoJson.features.find(f => f.properties.vessel_id === detailVesselId);
+        if (!f) return null;
+        return {
+          lat: f.geometry.coordinates[1],
+          lon: f.geometry.coordinates[0],
+          heading: f.properties.heading,
+          speed_knots: f.properties.speed_knots
+        };
+      })()
+    : null;
 
   return (
     <div className="app-container">
@@ -37,6 +57,7 @@ function App() {
           alerts={alerts}
           selectedAlertId={selectedAlertId}
           sarVesselId={sarVesselId}
+          onVesselClick={handleVesselClick}
         />
       </div>
 
@@ -63,6 +84,14 @@ function App() {
           <Toast droppedCount={droppedCount} />
         </div>
       </div>
+
+      {detailVesselId && (
+        <VesselDetailsModal
+          vesselId={detailVesselId}
+          vesselData={detailVesselData}
+          onClose={() => setDetailVesselId(null)}
+        />
+      )}
     </div>
   );
 }

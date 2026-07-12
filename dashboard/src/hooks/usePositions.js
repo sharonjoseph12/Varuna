@@ -11,6 +11,13 @@ export function usePositions(url) {
   });
 
   useEffect(() => {
+    if (status === 'CONNECTED') {
+      positionsMap.current.clear();
+      setGeoJson({ type: 'FeatureCollection', features: [] });
+    }
+  }, [status]);
+
+  useEffect(() => {
     messageHandlerRef.current = (event) => {
       const data = JSON.parse(event.data);
       // Batch incoming positions into the map
@@ -23,6 +30,16 @@ export function usePositions(url) {
     let animationFrameId;
     
     function flush() {
+      const colors = ['red', 'green', 'blue', 'purple', 'yellow', 'orange', 'cyan'];
+      function getColorForId(id) {
+        let hash = 0;
+        const str = String(id);
+        for (let i = 0; i < str.length; i++) {
+          hash = str.charCodeAt(i) + ((hash << 5) - hash);
+        }
+        return colors[Math.abs(hash) % colors.length];
+      }
+
       const features = [];
       for (const pos of positionsMap.current.values()) {
         features.push({
@@ -30,8 +47,13 @@ export function usePositions(url) {
           geometry: { type: 'Point', coordinates: [pos.lon, pos.lat] },
           properties: {
             vessel_id: pos.vessel_id,
-            heading: pos.heading,
-            speed_knots: pos.speed_knots
+            heading: pos.heading || 0,
+            speed_knots: pos.speed_knots,
+            ship_name: pos.ship_name || '',
+            nav_status: pos.nav_status ?? -1,
+            cog: pos.cog || 0,
+            trust_score: pos.trust_score ?? 1.0,
+            color: getColorForId(pos.vessel_id)
           }
         });
       }

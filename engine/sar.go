@@ -27,19 +27,29 @@ func (e *Engine) ComputeSARArea(vesselID string) (SARArea, bool) {
 	e.vesselsMu.RLock()
 	vs, ok := e.vessels[vesselID]
 	e.vesselsMu.RUnlock()
-	if !ok || vs.LastSeen == 0 {
+	if !ok {
+		return SARArea{}, false
+	}
+
+	vs.mu.Lock()
+	lastSeen := vs.LastSeen
+	lastLat := vs.LastLat
+	lastLon := vs.LastLon
+	lastSpeed := vs.lastSpeed()
+	lastHeading := vs.lastHeading()
+	vs.mu.Unlock()
+
+	if lastSeen == 0 {
 		return SARArea{}, false
 	}
 
 	// Time since last contact
-	elapsedMs := time.Now().UnixMilli() - vs.LastSeen
+	elapsedMs := time.Now().UnixMilli() - lastSeen
 	elapsedH := float64(elapsedMs) / 3600000.0
 	if elapsedH < 0.01 {
 		elapsedH = 0.5 // minimum projection: 30 min
 	}
 
-	lastSpeed := vs.lastSpeed()
-	lastHeading := vs.lastHeading()
 	if lastSpeed < 0.5 {
 		lastSpeed = 2.0 // assume minimum drift speed
 	}
@@ -47,14 +57,14 @@ func (e *Engine) ComputeSARArea(vesselID string) (SARArea, bool) {
 	// Project vessel vector
 	headRad := lastHeading * math.Pi / 180
 	vesselDriftKm := lastSpeed * 1.852 * elapsedH
-	driftLat := vs.LastLat + (vesselDriftKm/111.0)*math.Cos(headRad)
-	driftLon := vs.LastLon + (vesselDriftKm/(111.0*math.Cos(vs.LastLat*math.Pi/180)))*math.Sin(headRad)
+	driftLat := lastLat + (vesselDriftKm/111.0)*math.Cos(headRad)
+	driftLon := lastLon + (vesselDriftKm/(111.0*math.Cos(lastLat*math.Pi/180)))*math.Sin(headRad)
 
 	// Add current vector
 	currentRad := currentHeadingDeg * math.Pi / 180
 	currentDriftKm := currentSpeedKnots * 1.852 * elapsedH
 	driftLat += (currentDriftKm / 111.0) * math.Cos(currentRad)
-	driftLon += (currentDriftKm / (111.0 * math.Cos(vs.LastLat*math.Pi/180))) * math.Sin(currentRad)
+	driftLon += (currentDriftKm / (111.0 * math.Cos(lastLat*math.Pi/180))) * math.Sin(currentRad)
 
 	// Search radius: expands with time uncertainty
 	// ponytail: simple expanding circle, not a Leeway model
@@ -68,8 +78,8 @@ func (e *Engine) ComputeSARArea(vesselID string) (SARArea, bool) {
 	}
 
 	return SARArea{
-		CenterLat: vs.LastLat,
-		CenterLon: vs.LastLon,
+		CenterLat: lastLat,
+		CenterLon: lastLon,
 		DriftLat:  driftLat,
 		DriftLon:  driftLon,
 		RadiusKm:  math.Round(radiusKm*10) / 10,

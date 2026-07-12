@@ -17,17 +17,14 @@ func (e *Engine) checkIdentityConflict(msg AISMessage, ingestTime time.Time) {
 	}
 
 	e.vesselsMu.RLock()
-	// Find the last known state for this MMSI across all vessels
+	idxVs := e.mmsiIndex[msg.MMSI]
 	var prev *mmsiState
-	for _, vs := range e.vessels {
-		if vs.MMSI == msg.MMSI && vs.VesselID != msg.VesselID && vs.LastSeen > 0 {
-			prev = &mmsiState{
-				lat:         vs.LastLat,
-				lon:         vs.LastLon,
-				timestampMs: vs.LastSeen,
-				vesselID:    vs.VesselID,
-			}
-			break
+	if idxVs != nil && idxVs.VesselID != msg.VesselID && idxVs.LastSeen > 0 {
+		prev = &mmsiState{
+			lat:         idxVs.LastLat,
+			lon:         idxVs.LastLon,
+			timestampMs: idxVs.LastSeen,
+			vesselID:    idxVs.VesselID,
 		}
 	}
 	e.vesselsMu.RUnlock()

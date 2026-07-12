@@ -33,14 +33,14 @@ export default function CasePanel({ alerts, selectedAlertId, onSelectAlert, sarM
   };
 
   const getRecommendation = (alert, trust) => {
-    if (alert.type === 'suspected_sts_transfer') {
-      return { text: "DISPATCH PATROL VESSEL", color: "#FFB347" };
+    if (alert.type === 'dark_ship_smuggling') {
+      return { text: "DISPATCH RANGERS", color: "#FFB347" };
     }
-    if (alert.type === 'geofence_breach' && trust > 0.8) {
-      return { text: "IMMEDIATE INTERCEPTION", color: "#E74C3C" };
+    if (alert.type === 'whale_corridor_speeding' && trust > 0.8) {
+      return { text: "COAST GUARD INTERCEPT", color: "#E74C3C" };
     }
     if (trust < 0.4) {
-      return { text: "VISUAL VERIFICATION REQUIRED", color: "#FFB347" };
+      return { text: "SATELLITE AUDIT REQUIRED", color: "#FFB347" };
     }
     return { text: "MONITOR & LOG", color: "#95A5A6" };
   };
@@ -89,7 +89,7 @@ export default function CasePanel({ alerts, selectedAlertId, onSelectAlert, sarM
 
                 <div className="trust-meter-container">
                   <div className="trust-meter-label">
-                    <span>Trust Score</span>
+                    <span>Eco-Trust Score</span>
                     <span style={{ color: getTrustColor(trustScore) }}>
                       {(trustScore * 100).toFixed(0)}%
                     </span>

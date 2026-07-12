@@ -75,3 +75,228 @@ body {
 .text-unresolved_dark_vessel { color: var(--color-unresolved); }
 .bg-suspected_sts_transfer { background-color: var(--color-sts); }
 .text-suspected_sts_transfer { color: var(--color-sts); }
+
+/* MapLibre Popup Override */
+.vessel-popup .maplibregl-popup-content {
+  background: rgba(15, 23, 42, 0.92);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 10px;
+  padding: 0;
+  color: #f8fafc;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  min-width: 220px;
+}
+.vessel-popup .maplibregl-popup-tip {
+  border-top-color: rgba(15, 23, 42, 0.92);
+}
+.vessel-popup .maplibregl-popup-close-button {
+  color: #94a3b8;
+  font-size: 18px;
+  padding: 4px 8px;
+}
+
+/* Vessel Details Modal */
+.vessel-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(4px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.vessel-modal {
+  background: #1e293b;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 16px;
+  width: 580px;
+  max-height: 85vh;
+  overflow-y: auto;
+  box-shadow: 0 24px 80px rgba(0,0,0,0.6);
+  animation: slideUp 0.25s ease;
+}
+
+@keyframes slideUp {
+  from { transform: translateY(30px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.vessel-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+
+.vessel-modal-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.vessel-modal-title h2 {
+  font-size: 20px;
+  font-weight: 700;
+  margin: 0;
+  color: #f8fafc;
+}
+
+.vessel-flag {
+  font-size: 28px;
+}
+
+.vessel-type-badge {
+  display: inline-block;
+  background: rgba(59,130,246,0.2);
+  color: #60a5fa;
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+  margin-top: 2px;
+}
+
+.vessel-modal-close {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  color: #94a3b8;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+}
+.vessel-modal-close:hover {
+  background: rgba(239,68,68,0.2);
+  color: #ef4444;
+}
+
+.vessel-modal-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  padding: 0 24px;
+}
+
+.vessel-modal-tabs button {
+  background: none;
+  border: none;
+  color: #94a3b8;
+  padding: 12px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.15s;
+}
+.vessel-modal-tabs button:hover {
+  color: #f8fafc;
+}
+.vessel-modal-tabs button.active {
+  color: #3b82f6;
+  border-bottom-color: #3b82f6;
+}
+
+.vessel-modal-body {
+  padding: 20px 24px;
+}
+
+.vessel-summary-text {
+  color: #cbd5e1;
+  font-size: 14px;
+  line-height: 1.7;
+  margin-bottom: 16px;
+}
+.vessel-summary-text strong {
+  color: #f8fafc;
+}
+
+.vessel-voyage {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 12px;
+  padding: 16px;
+  margin-top: 8px;
+}
+
+.voyage-endpoints {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  color: #94a3b8;
+  margin-bottom: 8px;
+}
+
+.voyage-bar {
+  width: 100%;
+  height: 6px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+
+.voyage-progress {
+  height: 100%;
+  background: linear-gradient(90deg, #3b82f6, #60a5fa);
+  border-radius: 3px;
+  transition: width 0.5s ease;
+}
+
+.voyage-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-outline {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.15);
+  color: #f8fafc;
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.15s;
+  flex: 1;
+  text-align: center;
+}
+.btn-outline:hover {
+  background: rgba(59,130,246,0.15);
+  border-color: #3b82f6;
+}
+
+.vessel-info-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  font-size: 14px;
+}
+.info-row span {
+  color: #94a3b8;
+}
+.info-row strong {
+  color: #f8fafc;
+}
+

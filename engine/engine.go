@@ -18,6 +18,7 @@ type Engine struct {
 	store  *Store
 
 	vessels   map[string]*VesselState // vesselID → state
+	mmsiIndex map[string]*VesselState // mmsi → latest state
 	vesselsMu sync.RWMutex
 
 	// Alert storage for corroboration lookups
@@ -64,6 +65,7 @@ func NewEngine(cfg Config, zones []Zone) *Engine {
 		zones:       zones,
 		grid:        NewGrid(cfg.GridCellSizeDeg, zones),
 		vessels:     make(map[string]*VesselState),
+		mmsiIndex:   make(map[string]*VesselState),
 		alertStore:  make(map[string]*Alert),
 		trustScores: make(map[string]*TrustScore),
 		darkModel:   NewDarkIntentModel(),
@@ -86,47 +88,34 @@ func NewEngine(cfg Config, zones []Zone) *Engine {
 	return e
 }
 
-// Ingest consumes AIS messages from the input channel using batched-tick processing.
+// Ingest consumes AIS messages from the input channel using concurrent workers.
 // Blocks until the input channel is closed.
 func (e *Engine) Ingest(in <-chan AISMessage) {
+	// Start periodic checks
 	ticker := time.NewTicker(time.Duration(e.cfg.TickIntervalMs) * time.Millisecond)
-	defer ticker.Stop()
-
-	batch := make([]AISMessage, 0, 2000)
-	ingestTimes := make([]time.Time, 0, 2000)
-
-	for {
-		select {
-		case msg, ok := <-in:
-			if !ok {
-				// Channel closed — process remaining batch
-				if len(batch) > 0 {
-					e.processBatch(batch, ingestTimes)
-				}
-				return
-			}
-			batch = append(batch, msg)
-			ingestTimes = append(ingestTimes, time.Now())
-
-		case <-ticker.C:
-			if len(batch) > 0 {
-				e.processBatch(batch, ingestTimes)
-				batch = batch[:0]
-				ingestTimes = ingestTimes[:0]
-			}
-			// Also run periodic checks on tick
+	go func() {
+		for range ticker.C {
 			e.runAbsenceChecks()
 			e.checkRendezvous()
 		}
-	}
-}
+	}()
 
-// processBatch handles a batch of messages.
-func (e *Engine) processBatch(batch []AISMessage, ingestTimes []time.Time) {
-	for i, msg := range batch {
-		ingestTime := ingestTimes[i]
-		e.processMessage(msg, ingestTime)
+	// Start a fixed number of workers to process messages concurrently
+	const numWorkers = 8
+	var wg sync.WaitGroup
+	wg.Add(numWorkers)
+
+	for i := 0; i < numWorkers; i++ {
+		go func() {
+			defer wg.Done()
+			for msg := range in {
+				e.processMessage(msg, time.Now())
+			}
+		}()
 	}
+
+	wg.Wait()
+	ticker.Stop()
 }
 
 func (e *Engine) processMessage(msg AISMessage, ingestTime time.Time) {
@@ -134,6 +123,10 @@ func (e *Engine) processMessage(msg AISMessage, ingestTime time.Time) {
 
 	// Get or create vessel state
 	vs := e.getOrCreateVessel(msg.VesselID, msg.MMSI)
+
+	// Lock the vessel state for concurrent workers
+	vs.mu.Lock()
+	defer vs.mu.Unlock()
 
 	// Record gap for absence engine
 	if vs.LastSeen > 0 && msg.TimestampMs > vs.LastSeen {
@@ -195,6 +188,9 @@ func (e *Engine) getOrCreateVessel(vesselID, mmsi string) *VesselState {
 			AbsState:       AbsencePresent,
 		}
 		e.vessels[vesselID] = vs
+		if mmsi != "" {
+			e.mmsiIndex[mmsi] = vs
+		}
 	}
 	e.vesselsMu.Unlock()
 	return vs
@@ -341,8 +337,10 @@ func percentile(sorted []float64, p float64) float64 {
 	return sorted[idx]
 }
 
+var alertCounter atomic.Uint64
+
 func newAlertID() string {
-	return fmt.Sprintf("alert-%d", time.Now().UnixNano())
+	return fmt.Sprintf("alert-%d-%d", time.Now().UnixNano(), alertCounter.Add(1))
 }
 
 // Close shuts down the engine and store.

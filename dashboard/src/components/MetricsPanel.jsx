@@ -65,8 +65,23 @@ export default function MetricsPanel({ metrics }) {
       <h2 style={{ fontSize: '14px', textTransform: 'uppercase', color: 'var(--text-secondary)', marginBottom: '8px' }}>
         System Throughput
       </h2>
-      <div style={{ fontSize: '36px', fontWeight: '700', marginBottom: '24px' }}>
+      <div style={{ fontSize: '36px', fontWeight: '700', marginBottom: '8px' }}>
         {metrics.throughput_per_sec.toLocaleString()} <span style={{ fontSize: '14px', fontWeight: '400', color: 'var(--text-secondary)' }}>msgs/sec</span>
+      </div>
+      
+      <div style={{ marginBottom: '24px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#94a3b8', marginBottom: '6px' }}>
+          <span>Current Load</span>
+          <span>Engine Capacity: 5,000+ msgs/s</span>
+        </div>
+        <div style={{ width: '100%', height: '8px', background: 'rgba(255,255,255,0.1)', borderRadius: '4px', overflow: 'hidden' }}>
+          <div style={{ 
+            width: `${Math.min((metrics.throughput_per_sec / 5000) * 100, 100)}%`, 
+            height: '100%', 
+            background: 'linear-gradient(90deg, #3b82f6, #60a5fa)',
+            transition: 'width 0.5s ease-out'
+          }}></div>
+        </div>
       </div>
       
       <h2 style={{ fontSize: '14px', textTransform: 'uppercase', color: 'var(--text-secondary)', marginBottom: '8px' }}>

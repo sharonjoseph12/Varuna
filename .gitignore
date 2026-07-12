@@ -5,6 +5,10 @@
 vendor/
 varuna.db
 
+# Binaries at root
+main.exe
+varuna
+
 # Member 3 — data files
 data/sar/*.tiff
 data/sar/*.tif

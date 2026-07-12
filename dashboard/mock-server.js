@@ -1,5 +1,6 @@
 import { WebSocketServer, WebSocket } from 'ws';
 import http from 'http';
+import { zones } from './src/utils/zones.js';
 
 const server = http.createServer((req, res) => {
   if (req.url === '/metrics' && req.method === 'GET') {
@@ -38,86 +39,77 @@ server.on('upgrade', (request, socket, head) => {
 // State for synthetic vessels (still keep a few for synthetic alerts if needed)
 const vessels = new Map();
 
-// Generate some synthetic ones just to be safe
-Array.from({ length: 10 }, (_, i) => {
-  vessels.set(`vessel_${i}`, {
-    id: `vessel_${i}`,
-    lat: 40.0 + (Math.random() - 0.5) * 5,
-    lon: -72.5 + (Math.random() - 0.5) * 5,
-    heading: Math.random() * 360,
-    speed: 5 + Math.random() * 15
-  });
-});
+const AISSTREAM_API_KEY = "68528e0932a0a089229d3e5bc4089619e568fc03";
+let aisMsgCount = 0;
 
-const AISSTREAM_API_KEY = "b475125d12173e57f2a82eb974ae821ba39b952f";
-const aisSocket = new WebSocket("wss://stream.aisstream.io/v0/stream");
+function connectAIS() {
+  console.log("Connecting to aisstream.io...");
+  const aisSocket = new WebSocket("wss://stream.aisstream.io/v0/stream");
 
-aisSocket.on('open', () => {
-  console.log("Connected to aisstream.io");
-  const subscriptionMessage = {
+  aisSocket.on('open', () => {
+    console.log("✓ Connected to aisstream.io");
+    const subscriptionMessage = {
       APIKey: AISSTREAM_API_KEY,
       BoundingBoxes: [[[-90, -180], [90, 180]]],
       FilterMessageTypes: ["PositionReport"]
-  };
-  aisSocket.send(JSON.stringify(subscriptionMessage));
-});
+    };
+    aisSocket.send(JSON.stringify(subscriptionMessage));
+  });
 
-aisSocket.on('error', (err) => {
-  console.error("AisStream error", err);
-});
+  aisSocket.on('error', (err) => {
+    console.error("AisStream error:", err.message || err);
+  });
 
-let aisMsgCount = 0;
+  aisSocket.on('close', (code, reason) => {
+    console.log(`AisStream closed: code=${code} reason=${reason}. Reconnecting in 3s...`);
+    setTimeout(connectAIS, 3000);
+  });
 
-aisSocket.on('message', (data) => {
-  try {
-    const msg = JSON.parse(data.toString());
-    
-    // Log occasionally to confirm receipt
-    aisMsgCount++;
-    if (aisMsgCount % 50 === 0) {
-      console.log(`Received 50 more AIS messages... Total: ${aisMsgCount}, Current Map Size: ${vessels.size}`);
-    }
+  aisSocket.on('message', (data) => {
+    try {
+      const msg = JSON.parse(data.toString());
 
-    if (msg.MessageType === "PositionReport") {
-      const metadata = msg.MetaData;
-      const report = msg.Message.PositionReport;
-      
-      const vId = `MMSI-${metadata.MMSI}`;
-      vessels.set(vId, {
-        id: vId,
-        lat: metadata.latitude,
-        lon: metadata.longitude,
-        heading: report.TrueHeading || 0,
-        speed: report.Sog || 0
-      });
-      
-      // Cleanup old vessels if we have too many
-      if (vessels.size > 2000) {
-        const firstKey = vessels.keys().next().value;
-        vessels.delete(firstKey);
+      aisMsgCount++;
+      if (aisMsgCount % 100 === 0) {
+        console.log(`AIS messages: ${aisMsgCount}, Vessels tracked: ${vessels.size}`);
       }
-    } else {
-      console.log("Received other message type:", msg.MessageType);
+
+      if (msg.MessageType === "PositionReport") {
+        const metadata = msg.MetaData;
+        const report = msg.Message.PositionReport;
+
+        const vId = `MMSI-${metadata.MMSI}`;
+        vessels.set(vId, {
+          id: vId,
+          lat: metadata.latitude,
+          lon: metadata.longitude,
+          heading: report.TrueHeading || 0,
+          speed: report.Sog || 0,
+          ship_name: metadata.ShipName || '',
+          nav_status: report.NavigationalStatus ?? -1,
+          cog: report.Cog || 0
+        });
+
+        // Cap at 15k unique vessels (FIFO eviction)
+        if (vessels.size > 15000) {
+          const firstKey = vessels.keys().next().value;
+          vessels.delete(firstKey);
+        }
+      }
+    } catch (err) {
+      console.error("Parse error:", err);
     }
-  } catch (err) {
-    console.error("Parse error:", err);
-  }
-});
+  });
+}
+
+connectAIS();
 
 let lastAlertTime = 0;
 
 // Broadcast positions
 setInterval(() => {
   vessels.forEach(v => {
-    // Move synthetic vessels a bit
-    if (v.id && v.id.startsWith('vessel_')) {
-      v.lat += (Math.cos(v.heading * Math.PI / 180) * 0.0001 * v.speed);
-      v.lon += (Math.sin(v.heading * Math.PI / 180) * 0.0001 * v.speed);
-      
-      // Bounce off edges roughly
-      if (v.lat > 41 || v.lat < 39) v.heading = 180 - v.heading;
-      if (v.lon > -71 || v.lon < -74) v.heading = 360 - v.heading;
-    }
+    // Broadcast positions of live ships
 
     const msg = JSON.stringify({
       vessel_id: v.id,
@@ -125,6 +117,9 @@ setInterval(() => {
       lon: v.lon,
       heading: v.heading,
       speed_knots: v.speed,
+      ship_name: v.ship_name || '',
+      nav_status: v.nav_status ?? -1,
+      cog: v.cog || 0,
       timestamp_ms: Date.now()
     });
 
@@ -134,45 +129,88 @@ setInterval(() => {
   });
 }, 500); // ~2fps update rate
 
-// Simulate random alerts occasionally
+// Ray-casting point in polygon algorithm
+function pointInPolygon(point, vs) {
+  let x = point[0], y = point[1];
+  let inside = false;
+  for (let i = 0, j = vs.length - 1; i < vs.length; j = i++) {
+    let xi = vs[i][0], yi = vs[i][1];
+    let xj = vs[j][0], yj = vs[j][1];
+    let intersect = ((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+    if (intersect) inside = !inside;
+  }
+  return inside;
+}
+
+// Keep track of active alerts to avoid spamming for the same vessel
+const activeAlerts = new Set();
+
+// Evaluate vessels against protected zones periodically
 setInterval(() => {
-  if (Date.now() - lastAlertTime < 5000) return;
   if (vessels.size === 0) return;
   
-  const types = ["geofence_breach", "suspected_dark_transit", "suspected_illegal_fishing", "identity_conflict"];
-  const type = types[Math.floor(Math.random() * types.length)];
-  
   const vesselArray = Array.from(vessels.values());
-  const v = vesselArray[Math.floor(Math.random() * vesselArray.length)];
+  let alertsEmittedThisCycle = 0;
   
-  const alert = {
-    alert_id: crypto.randomUUID(),
-    type,
-    vessel_id: v.id,
-    timestamp: new Date().toISOString(),
-    position: { lat: v.lat, lon: v.lon },
-    zone: "Coastal Protected Zone",
-    confidence: 0.6 + Math.random() * 0.3,
-    evidence: {
-      silence_duration_s: 340,
-      boundary_proximity_km: 0.8,
-      conflicting_position: type === "identity_conflict" ? { lat: v.lat + 1, lon: v.lon + 1 } : null
-    },
-    reasoning_trace: {
-      inputs_evaluated: ["silence_ratio", "boundary_proximity", "historical_gap_pattern"],
-      thresholds_used: { zone_tolerance_s: 106, boundary_buffer_km: 2.0 },
-      modalities_available: ["ais"],
-      engine_version: "absence-engine-v1"
-    },
-    corroboration: { status: Math.random() > 0.8 ? "corroborated" : "none", source: "Sentinel-1" }
-  };
+  for (const v of vesselArray) {
+    if (activeAlerts.has(v.id)) continue; // Already alerted
+    
+    for (const feature of zones.features) {
+      if (feature.geometry.type === "Polygon") {
+        const poly = feature.geometry.coordinates[0];
+        // Note: GeoJSON is [lon, lat]
+        if (pointInPolygon([v.lon, v.lat], poly)) {
+          // Intersection found! Generate alert.
+          const riskLevel = feature.properties.risk_level === 'critical' ? 'CRITICAL' : 'HIGH';
+          const alertType = feature.properties.zone_type === 'marine_protected' ? 'Marine Sanctuary Violation' :
+                            feature.properties.zone_type === 'rare_species' ? 'Rare Species Zone Incursion' : 
+                            'High Risk Area Entry';
 
-  const msg = JSON.stringify(alert);
-  wssAlerts.clients.forEach(client => {
-    if (client.readyState === 1) client.send(msg);
-  });
-  lastAlertTime = Date.now();
-}, 2000);
+          const alert = {
+            alert_id: crypto.randomUUID(),
+            type: alertType,
+            vessel_id: v.id,
+            timestamp: new Date().toISOString(),
+            position: { lat: v.lat, lon: v.lon },
+            zone: feature.properties.name,
+            confidence: 0.95 + (Math.random() * 0.04), // 0.95 - 0.99
+            evidence: {
+              boundary_proximity_km: 0.0,
+              intersection_confirmed: true,
+              speed_recorded: v.speed,
+              nav_status: v.nav_status
+            },
+            reasoning_trace: {
+              inputs_evaluated: ["ais_position", "geo_fence_intersection"],
+              thresholds_used: { risk_level: riskLevel, polygon_check: "ray-casting" },
+              modalities_available: ["ais"],
+              engine_version: "varuna-eval-v1"
+            },
+            corroboration: { status: "corroborated", source: "Varuna Spatial Engine" }
+          };
+
+          const msg = JSON.stringify(alert);
+          wssAlerts.clients.forEach(client => {
+            if (client.readyState === 1) client.send(msg);
+          });
+          
+          activeAlerts.add(v.id);
+          alertsEmittedThisCycle++;
+          
+          // Limit to 2 new alerts per cycle to prevent overwhelming UI
+          if (alertsEmittedThisCycle >= 2) return;
+          break; // Move to next vessel
+        }
+      }
+    }
+  }
+  
+  // Cleanup active alerts after a while so they can fire again if ship re-enters (e.g. 5 minutes)
+  if (activeAlerts.size > 200) {
+     const iterator = activeAlerts.values();
+     activeAlerts.delete(iterator.next().value);
+  }
+}, 3000);
 
 server.listen(8080, () => {
   console.log('Mock server running on port 8080');

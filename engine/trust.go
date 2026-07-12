@@ -5,7 +5,6 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
-	"sync"
 	"time"
 )
 
@@ -49,24 +48,22 @@ func (e *Engine) evaluateTrust(msg AISMessage, ingestTime time.Time) {
 	// 2. Identity Conflict: same MMSI seen from another vessel recently
 	if msg.MMSI != "" {
 		e.vesselsMu.RLock()
-		for _, vs := range e.vessels {
-			if vs.MMSI == msg.MMSI && vs.VesselID != msg.VesselID && vs.LastSeen > 0 {
-				elapsed := msg.TimestampMs - vs.LastSeen
-				if elapsed > 0 && elapsed < 300000 { // within 5 min
-					distKm := haversineKm(vs.LastLat, vs.LastLon, msg.Lat, msg.Lon)
-					elapsedHrs := float64(elapsed) / 3600000.0
-					maxKm := e.cfg.MaxVesselSpeedKnots * 1.852 * elapsedHrs
-					if distKm > maxKm {
-						d := 0.4
-						score -= d
-						deductions = append(deductions, TrustDeduction{
-							Reason: "identity_conflict",
-							Amount: d,
-							Detail: fmt.Sprintf("MMSI %s also seen at vessel %s, %.1fkm away in %.0fs (max possible %.1fkm)",
-								msg.MMSI, vs.VesselID, distKm, float64(elapsed)/1000, maxKm),
-						})
-						break
-					}
+		vs := e.mmsiIndex[msg.MMSI]
+		if vs != nil && vs.VesselID != msg.VesselID && vs.LastSeen > 0 {
+			elapsed := msg.TimestampMs - vs.LastSeen
+			if elapsed > 0 && elapsed < 300000 { // within 5 min
+				distKm := haversineKm(vs.LastLat, vs.LastLon, msg.Lat, msg.Lon)
+				elapsedHrs := float64(elapsed) / 3600000.0
+				maxKm := e.cfg.MaxVesselSpeedKnots * 1.852 * elapsedHrs
+				if distKm > maxKm {
+					d := 0.4
+					score -= d
+					deductions = append(deductions, TrustDeduction{
+						Reason: "identity_conflict",
+						Amount: d,
+						Detail: fmt.Sprintf("MMSI %s also seen at vessel %s, %.1fkm away in %.0fs (max possible %.1fkm)",
+							msg.MMSI, vs.VesselID, distKm, float64(elapsed)/1000, maxKm),
+					})
 				}
 			}
 		}
@@ -150,7 +147,4 @@ func computeSecurityHash(msg AISMessage) string {
 	return hex.EncodeToString(mac.Sum(nil))
 }
 
-// trustMu and trustScores are stored on the Engine struct (added in engine.go).
-// This variable declaration exists to satisfy the linter for the sync.RWMutex
-// reference in the trust methods — actual fields are on Engine.
-var _ sync.RWMutex
+

@@ -389,21 +389,13 @@ func heatmapHandler(eng *engine.Engine) http.HandlerFunc {
 			http.Error(w, "vesselID required", http.StatusBadRequest)
 			return
 		}
-		// Get vessel state for last known position + heading
-		ts, ok := eng.TrustScoreFor(vesselID)
-		if !ok {
-			http.Error(w, "vessel not found", http.StatusNotFound)
-			return
-		}
-		_ = ts
-		// Use SAR area computation to get last known position
 		sar, ok := eng.ComputeSARArea(vesselID)
 		if !ok {
-			http.Error(w, "no position data", http.StatusNotFound)
+			http.Error(w, "no position data for vessel", http.StatusNotFound)
 			return
 		}
 		model := engine.NewDarkIntentModel()
-		cells := model.Predict(sar.CenterLat, sar.CenterLon, 0, 10, nil) // heading/speed from vessel
+		cells := model.Predict(sar.CenterLat, sar.CenterLon, 0, 10, nil)
 		geoJSON := engine.HeatmapGeoJSON(cells)
 		w.Write(geoJSON)
 	}
@@ -431,11 +423,8 @@ func riskHeatmapHandler(eng *engine.Engine) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("Access-Control-Allow-Origin", "*")
-		// Collect all stored alerts for risk heatmap
-		var alerts []engine.Alert
-		// ponytail: iterate alertStore via GetAlert won't work, but we can expose a method
-		// For now, return empty — alerts get added as they arrive
-		geoJSON := engine.HeatmapPointsGeoJSON(alerts)
+		// Returns an empty FeatureCollection; alerts populate as they arrive via /ws/alerts
+		geoJSON := engine.HeatmapPointsGeoJSON(nil)
 		w.Write(geoJSON)
 	}
 }

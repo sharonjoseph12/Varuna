@@ -17,12 +17,23 @@ func (e *Engine) runAbsenceChecks() {
 	e.vesselsMu.RUnlock()
 
 	for _, vs := range vessels {
+		vs.mu.Lock()
 		if vs.LastSeen == 0 || vs.AbsState != AbsencePresent {
+			vs.mu.Unlock()
 			continue
 		}
 
 		silenceMs := now - vs.LastSeen
-		zone := e.findNearestZone(vs.LastLat, vs.LastLon)
+		lastLat := vs.LastLat
+		lastLon := vs.LastLon
+		absState := vs.AbsState
+		lastHeading := vs.lastHeading()
+		lastSpeed := vs.lastSpeed()
+		gapHistory := append([]int64(nil), vs.GapHistory...)
+		vs.mu.Unlock()
+
+		_ = absState // already checked above under lock
+		zone := e.findNearestZone(lastLat, lastLon)
 		if zone == nil {
 			continue // no zone nearby — skip
 		}
@@ -33,30 +44,32 @@ func (e *Engine) runAbsenceChecks() {
 		}
 
 		// Check boundary proximity
-		boundaryProximityKm := e.boundaryProximityKm(vs.LastLat, vs.LastLon, zone)
+		boundaryProximityKm := e.boundaryProximityKm(lastLat, lastLon, zone)
 		if boundaryProximityKm > zone.BoundaryBufferKm {
 			continue // not near boundary — less suspicious
 		}
 
 		// Score confidence
-		confidence := e.scoreAbsenceConfidence(vs, silenceMs, toleranceMs, boundaryProximityKm, zone)
+		confidence := e.scoreAbsenceConfidence(vs, silenceMs, toleranceMs, boundaryProximityKm, zone, gapHistory)
 
+		vs.mu.Lock()
 		vs.AbsState = AbsenceSuspiciousDark
+		vs.mu.Unlock()
 
 		alert := Alert{
 			AlertID:   newAlertID(),
 			Type:      "suspected_dark_transit",
 			VesselID:  vs.VesselID,
 			Timestamp: time.Now().UTC().Format(time.RFC3339),
-			Position:  LatLon{Lat: vs.LastLat, Lon: vs.LastLon},
+			Position:  LatLon{Lat: lastLat, Lon: lastLon},
 			Zone:      zone.Name,
 			Confidence: confidence,
 			Evidence: map[string]interface{}{
 				"silence_duration_s":    float64(silenceMs) / 1000,
 				"boundary_proximity_km": boundaryProximityKm,
 				"zone_tolerance_s":      zone.SilenceToleranceSec,
-				"last_heading":          vs.lastHeading(),
-				"last_speed_knots":      vs.lastSpeed(),
+				"last_heading":          lastHeading,
+				"last_speed_knots":      lastSpeed,
 			},
 			ReasoningTrace: ReasoningTrace{
 				InputsEvaluated: []string{
@@ -95,7 +108,12 @@ func (e *Engine) handleReappearance(vs *VesselState, msg AISMessage, ingestTime 
 		elapsedHrs := float64(msg.TimestampMs-prevPos.TimestampMs) / 3600000.0
 		maxPossibleKm := e.cfg.MaxVesselSpeedKnots * 1.852 * elapsedHrs
 
-		zone := e.findNearestZone(prevPos.Lat, prevPos.Lon, msg.Lat, msg.Lon)
+		zone := e.findNearestZone(prevPos.Lat, prevPos.Lon)
+		// Also check if the new position crossed into a zone
+		newZone := e.findNearestZone(msg.Lat, msg.Lon)
+		if zone == nil {
+			zone = newZone
+		}
 		crossedBoundary := false
 		if zone != nil {
 			// Check if vessel was outside and is now inside (or vice versa)
@@ -160,7 +178,7 @@ func (e *Engine) handleReappearance(vs *VesselState, msg AISMessage, ingestTime 
 	}
 }
 
-func (e *Engine) scoreAbsenceConfidence(vs *VesselState, silenceMs, toleranceMs int64, boundaryProximityKm float64, zone *Zone) float64 {
+func (e *Engine) scoreAbsenceConfidence(vs *VesselState, silenceMs, toleranceMs int64, boundaryProximityKm float64, zone *Zone, gapHistory []int64) float64 {
 	score := 0.0
 
 	// Silence ratio: how much beyond tolerance
@@ -183,8 +201,8 @@ func (e *Engine) scoreAbsenceConfidence(vs *VesselState, silenceMs, toleranceMs 
 	}
 
 	// Historical gap pattern: is this anomalous?
-	if len(vs.GapHistory) > 3 {
-		avgGap := avgInt64(vs.GapHistory)
+	if len(gapHistory) > 3 {
+		avgGap := avgInt64(gapHistory)
 		if silenceMs > avgGap*3 {
 			score += 0.25 // anomalous gap
 		} else {

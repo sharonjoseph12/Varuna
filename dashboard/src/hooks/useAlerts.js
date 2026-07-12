@@ -7,6 +7,12 @@ export function useAlerts(url) {
   const [droppedCount, setDroppedCount] = useState(0);
 
   useEffect(() => {
+    if (status === 'CONNECTED') {
+      setAlerts([]);
+    }
+  }, [status]);
+
+  useEffect(() => {
     messageHandlerRef.current = (event) => {
       const data = JSON.parse(event.data);
       

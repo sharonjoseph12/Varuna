@@ -45,16 +45,26 @@ export default function AlertPanel({ alerts, selectedAlertId, onSelectAlert }) {
                 }}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                  <span className={getFormatClass(alert.type)} style={{ fontWeight: '600', fontSize: '13px' }}>
+                  <span className={getFormatClass(alert.type)} style={{ fontWeight: '600', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                     {formatType(alert.type)}
+                    {alert.type === 'geofence_breach' && (
+                      <span style={{ backgroundColor: '#e74c3c', color: 'white', padding: '2px 6px', borderRadius: '4px', fontSize: '10px', fontWeight: 'bold' }}>HIGH RISK</span>
+                    )}
                   </span>
                   <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
                     {formatTime(alert.timestamp)}
                   </span>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
-                  <span>Vessel: {alert.vessel_id.split('_')[1]}</span>
-                  <span>Conf: {(alert.confidence * 100).toFixed(0)}%</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginTop: '6px' }}>
+                  <span>Vessel: {alert.vessel_id.replace('MMSI-', '')}</span>
+                  <div style={{ display: 'flex', gap: '12px' }}>
+                    <span title="Probability of being a compliant vessel">
+                      Trust: <span style={{ color: (alert.trust_score ?? 1.0) > 0.8 ? '#10b981' : (alert.trust_score ?? 1.0) > 0.5 ? '#f59e0b' : '#ef4444', fontWeight: 'bold' }}>
+                        {((alert.trust_score ?? 1.0) * 100).toFixed(0)}%
+                      </span>
+                    </span>
+                    <span>Conf: {(alert.confidence * 100).toFixed(0)}%</span>
+                  </div>
                 </div>
               </div>
               
